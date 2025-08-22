@@ -1,0 +1,239 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "type": "dashboard",
+        "name": "Annotations & Alerts",
+        "enable": true
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "iteration": 1,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Slippage p95 ({{$window}}) por símbolo",
+      "id": 1,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROM}"
+      },
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": { "unit": "bps" },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "quantile_over_time(0.95, tca_slippage_bps{symbol=\"$symbol\"}[$window])",
+          "legendFormat": "{{symbol}}",
+          "refId": "A"
+        },
+        {
+          "expr": "slo_slippage_bps_threshold",
+          "legendFormat": "SLO ({{symbol}})",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Latency p95 ({{$window}}) por símbolo",
+      "id": 2,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROM}"
+      },
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": { "unit": "ms" },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "quantile_over_time(0.95, tca_place_latency_ms{symbol=\"$symbol\"}[$window])",
+          "legendFormat": "{{symbol}}",
+          "refId": "A"
+        },
+        {
+          "expr": "slo_place_ms_threshold",
+          "legendFormat": "SLO ({{symbol}})",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Cola Writer (tca_writer_queue_len)",
+      "id": 3,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROM}"
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 10 },
+      "fieldConfig": {
+        "defaults": { "unit": "none" },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        { "expr": "tca_writer_queue_len", "refId": "A" }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Top 10 slippage p95 vs SLO ({{$window}})",
+      "id": 4,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROM}"
+      },
+      "gridPos": { "h": 10, "w": 18, "x": 6, "y": 10 },
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "targets": [
+        {
+          "expr": "topk(10, quantile_over_time(0.95, tca_slippage_bps{symbol=\"$symbol\"}[$window]))",
+          "legendFormat": "{{symbol}}",
+          "refId": "A",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "expr": "slo_slippage_bps_threshold",
+          "legendFormat": "SLO {{symbol}}",
+          "refId": "B",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        { "id": "labelsToFields", "options": { "mode": "columns" } },
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true },
+            "indexByName": {},
+            "renameByName": {}
+          }
+        }
+      ]
+    },
+    {
+      "type": "piechart",
+      "title": "Distribución maker/taker (slippage peso)",
+      "id": 5,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROM}"
+      },
+      "gridPos": { "h": 10, "w": 8, "x": 0, "y": 16 },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right" }
+      },
+      "targets": [
+        {
+          "expr": "sum by (maker_taker) (tca_slippage_bps{symbol=\"$symbol\"})",
+          "legendFormat": "{{maker_taker}}",
+          "refId": "A",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "type": "barchart",
+      "title": "Slippage medio por route_algo",
+      "id": 6,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROM}"
+      },
+      "gridPos": { "h": 10, "w": 16, "x": 8, "y": 20 },
+      "options": {
+        "orientation": "auto",
+        "legend": { "displayMode": "list", "placement": "right" }
+      },
+      "fieldConfig": {
+        "defaults": { "unit": "bps" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "avg by (route_algo) (tca_slippage_bps{symbol=~\"$symbol\"})",
+          "legendFormat": "{{route_algo}}",
+          "refId": "A",
+          "instant": true
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["TCA","OMS","SLO"],
+  "templating": {
+    "list": [
+      {
+        "name": "DS_PROM",
+        "type": "datasource",
+        "label": "Prometheus",
+        "query": "prometheus",
+        "current": { "selected": true },
+        "hide": 0
+      },
+      {
+        "name": "symbol",
+        "type": "query",
+        "label": "Símbolo",
+        "datasource": { "type": "prometheus", "uid": "${DS_PROM}" },
+        "query": "label_values(tca_slippage_bps, symbol)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": { "selected": true, "text": ["All"], "value": ["$__all"] }
+      },
+      {
+        "name": "window",
+        "type": "custom",
+        "label": "Ventana p95",
+        "query": "30m,1h,3h,6h,12h,24h,7d",
+        "current": { "selected": true, "text": "30m", "value": "30m" }
+      }
+    ]
+  },
+  "time": { "from": "now-7d", "to": "now" },
+  "timepicker": {
+    "refresh_intervals": ["5s","10s","30s","1m","5m","15m"]
+  },
+  "timezone": "",
+  "title": "TCA & Writer — SLO Dashboard",
+  "uid": "tca-writer-slo",
+  "version": 1,
+  "weekStart": ""
+}
+
+

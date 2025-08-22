@@ -1,0 +1,68 @@
+groups:
+  - name: tca-writer
+    rules:
+      - alert: TCAWriterQueueHigh
+        expr: tca_writer_queue_len > 10000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cola TCA alta (>10k por 5m)"
+
+      - alert: TCAWriterDroppedEvents
+        expr: increase(tca_writer_dropped_events_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Eventos TCA descartados en los últimos 5m"
+
+      - alert: TCAWriterDBErrors
+        expr: increase(tca_writer_db_errors_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Errores de inserción DB en TCA Writer"
+
+      - alert: TCAWriterPushFailures
+        expr: increase(tca_writer_push_failures_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Fallos de Pushgateway en TCA Writer"
+
+      - alert: NoTCAEvents5m
+        expr: absent_over_time(tca_slippage_bps[5m])
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Sin eventos TCA (slippage) en 5m"
+
+  - name: tca-slo
+    rules:
+      - record: tca_slippage_bps_p95_30m
+        expr: quantile_over_time(0.95, tca_slippage_bps[30m])
+
+      - record: tca_place_latency_ms_p95_30m
+        expr: quantile_over_time(0.95, tca_place_latency_ms[30m])
+
+      - alert: SLOSlipBreached
+        expr: tca_slippage_bps_p95_30m > on(symbol) slo_slippage_bps_threshold
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slippage p95 (30m) supera SLO"
+
+      - alert: SLOPlaceLatencyBreached
+        expr: tca_place_latency_ms_p95_30m > on(symbol) slo_place_ms_threshold
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Latency p95 (30m) supera SLO"
+
+

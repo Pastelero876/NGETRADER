@@ -1,0 +1,10 @@
+route:
+  group_by: ["alertname","symbol"]
+  receiver: "email"
+
+receivers:
+  - name: "email"
+    email_configs:
+      - to: "ops@tu-dominio.com"
+
+
