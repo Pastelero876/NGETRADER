@@ -65,4 +65,56 @@ groups:
         annotations:
           summary: "Latency p95 (30m) supera SLO"
 
+  - name: canary-and-budget
+    rules:
+      - alert: BudgetDepleted
+        expr: gate_budget_active==1 OR daily_budget_left<=0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Presupuesto diario agotado"
+
+      - alert: SLOGateStuck
+        expr: sum_over_time(gate_slo_active[30m]) > 25
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "SLO gate activo prolongado (>25m en 30m)"
+
+      - alert: CanaryImbalance
+        expr: abs((canary_trades_total/total_trades) - CHALLENGER_SHARE) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Desviación del canary share >5%"
+
+  - name: data-quality
+    rules:
+      - alert: FeaturesMissing
+        expr: features_missing_ratio > 0.01
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Features missing ratio >1%"
+
+      - alert: FeedDislocation
+        expr: feed_dislocation_bps > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Dislocation >5 bps"
+
+      - alert: DataStale
+        expr: data_stale_seconds > 1
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Datos obsoletos >1s"
+
 

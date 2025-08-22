@@ -57,6 +57,7 @@ from nge_trader.services import health as _HEALTH
 from nge_trader.ai.orchestrator import handle_task
 from nge_trader.services import model_session
 from scripts.model_canary_control import run_once as canary_control_run
+from nge_trader.services.metrics import set_metric_labeled
 
 
 class EnvPayload(BaseModel):
@@ -1420,6 +1421,10 @@ def kit_slo(symbol: str | None = None) -> dict[str, Any]:
         slip_global = float('nan')
     err_rate_global = 0.0
     gate_global = (abs(slip_global) > float(s.slo_slippage_bps)) or (p95_global > float(s.slo_p95_ms)) or (err_rate_global > float(s.slo_error_rate))
+    try:
+        set_metric_labeled("gate_slo_active", 1.0 if gate_global else 0.0, {"symbol": "_GLOBAL"})
+    except Exception:
+        pass
     # Por símbolo (si se solicita o todo el universo usado en summary)
     syms = []
     if symbol:
@@ -1451,6 +1456,10 @@ def kit_slo(symbol: str | None = None) -> dict[str, Any]:
         err_rate_sym = err_rate_global
         gate = (abs(slip_sym) > float(s.slo_slippage_bps)) or (p95_sym > float(s.slo_p95_ms)) or (err_rate_sym > float(s.slo_error_rate))
         try:
+            set_metric_labeled("gate_slo_active", 1.0 if gate else 0.0, {"symbol": sym})
+        except Exception:
+            pass
+        try:
             from nge_trader.services.slo import get_symbol_slo as _get_slo
             slo = _get_slo(sym)
             src = str(slo.get("source", "unknown"))
@@ -1458,6 +1467,20 @@ def kit_slo(symbol: str | None = None) -> dict[str, Any]:
             src = "unknown"
         per_symbol[sym] = {"slippage_bps": slip_sym, "error_rate": err_rate_sym, "p95_ms": p95_sym, "gate": bool(gate), "source": src}
     return {"global": {"slippage_bps": slip_global, "error_rate": err_rate_global, "p95_ms": p95_global, "gate": bool(gate_global)}, "per_symbol": per_symbol}
+
+
+@router.post("/arm")
+def kit_arm() -> dict[str, Any]:
+    # Marca estado ARMADO y emite gate_budget_active según presupuesto
+    try:
+        used, left = _RB.get_today()
+        set_metric_labeled("gate_budget_active", 1.0 if float(left) <= 0.0 else 0.0, {"symbol": "_GLOBAL"})
+    except Exception:
+        pass
+    from nge_trader.config.settings import Settings as _S
+    s = _S()
+    s.kill_switch_armed = True  # type: ignore[attr-defined]
+    return {"ok": True, "armed": True}
 
 
 @router.post("/slo/refresh")

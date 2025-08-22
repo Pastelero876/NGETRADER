@@ -362,3 +362,4 @@ Extras recientes
   - [x] v4.1 — README + docker-compose para Prometheus/Pushgateway/Grafana (carpeta `observability/` con provisioning)
   - [x] v4.2 — “todo-en-uno” con nge_api en el mismo docker-compose (Dockerfile, .env.compose.example, Postgres y ajuste Prom targets)
   - [x] v4.3 — canario live + cierre de gaps: auto-control modelos, budget persistente, Decimal en OMS, particionado TCA (stub), chaos E2E, failover datos, UI hooks y endpoints de canary
+  - [x] v4.4 — Go-Live Canario: backup/verify, /arm, gates métricos, alertas extra, MANUAL.md

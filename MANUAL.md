@@ -1,69 +1,70 @@
-# MANUAL de Operaciones y Runbooks
+# Runbooks Go-Live Canario
 
-Este documento resume procedimientos ante incidentes y tareas operativas.
+## Congelación y arranque (T-1)
+- Fijar `requirements.txt` y tag git de modelos.
+- Backup DB:
+```
+python scripts/backup_db.py
+```
+- Verificar auditoría:
+```
+python scripts/verify_audit_chain.py
+```
+- Entorno live (copiar `.env.live.example` a `.env` y ajustar): `PROFILE=live`, `ENABLE_LIVE_TRADING=true`, `ENABLE_ONLINE_LEARNING=false`.
+- Preflight obligatorio:
+```
+curl http://localhost:8000/api/kit/preflight
+```
 
-## WS caído / reconexiones frecuentes
-- Ver métricas: `ws_uptime_seconds{ws=...}`, `ws_reconnects_total{ws=...}` en Grafana.
-- Acciones:
-  1) Revisar conexión/red, activar simulador con `NET_SIM_*` solo para reproducir.
-  2) Reiniciar con backoff (ya automático). Si persiste, ejecutar `scripts/ws_network_harness.py` para aislar.
-  3) Ejecutar `scripts/reconcile_and_alert.py` para rehidratar órdenes/fills.
+## Seeds
+- Reset budget:
+```
+curl -X POST http://localhost:8000/api/kit/risk/reset
+```
+- Pin de modelo (opcional):
+```
+curl -X POST http://localhost:8000/api/kit/model/pin -H "Content-Type: application/json" -d '{"model_id":"champion_YYYYMMDD"}'
+```
 
-## Skew NTP alto
-- Ver `time_skew_ms` y alertas.
-- Acciones: Cambiar `NTP_SERVER` o sincronizar SO. OMS bloquea si supera `MAX_TIME_SKEW_MS`.
+## Ramp Canario (T0→T+48h)
+- 0–8h: `pct=0.05`, si OK → 0.10 (T+8h) → 0.20 (T+24h).
+```
+curl -X PATCH "http://localhost:8000/api/kit/model/canary_share?pct=0.05"
+```
+- KPIs: `/api/kit/slo`, `/api/kit/slo?symbol=SYM`, `/api/kit/risk`, `/api/kit/slo/refresh`.
+- Gates: SLO, drift PSI, budget, preflight, kill-switch.
 
-## Duplicados de órdenes / idempotencia
-- Revisar `/metrics`: `idempotency_outbox_*` y `orders_error_total{...}`.
-- Acciones: Confirmar `ENABLE_IDEMPOTENCY=true`. Revisar outbox en DB (`order_outbox`).
+## Límites Live iniciales
+- `RISK_PER_TRADE_PCT=0.0015–0.0020`, `MAX_OPEN_POSITIONS=1–2`, `MAX_TRADES_PER_DAY=5–8`.
+- Daily loss cap: `MAX_DAILY_DRAWDOWN_PCT=0.01`.
+- Canary hard cap: notional canario ≤ 25% diario.
 
-## Desajuste de posiciones/saldos
-- Ejecutar `scripts/reconcile_and_alert.py` (resuelve y registra métricas `reconciliation_mismatches_total{type,symbol}`).
-- Ver panel de reconciliación (missing_in_db / missing_in_broker / status_mismatch).
+## Alertas
+- BudgetDepleted: `gate_budget_active==1 OR daily_budget_left<=0`.
+- SLOGateStuck: `sum_over_time(gate_slo_active[30m]) > 25`.
+- CanaryImbalance: `abs((canary_trades_total/total_trades) - CHALLENGER_SHARE) > 0.05`.
+- Data-quality: `features_missing_ratio>1%`, `feed_dislocation_bps>5bps`, `data_stale_seconds>1s`.
 
-## Breakers: error-rate o slippage
-- Ver `slo_error_rate_recent`, `slippage_bps_p95`.
-- Acciones: Armar `kill-switch` desde UI. Ajustar `MAX_ERROR_RATE` o `MAX_SLIPPAGE_BPS` si corresponde.
+## UI mínima live
+- Panel Estado Live: `model_id_used`, `pinned`, `canary_share`, `budget_left`, gates activos.
+- Botones con doble confirmación: Arm/Disarm, Promote/Rollback, Risk Reset.
 
-## Presupuestos (budgets) agotados
-- UI muestra envíos hoy por estrategia/símbolo/cuenta. Ajustar límites en `config/settings.py`.
+## Reporte diario
+- `/api/kit/report/today` devuelve ZIP con `orders.csv`, `fills.csv`, `pnl.csv`, `tca.csv`, `metadata.json`.
+- Verificador de audit log: `scripts/verify_audit_chain.py`.
 
-## Model Drift (PSI)
-- Ver `model_drift_psi`. Si supera umbral, considerar rollback de canary desde UI o endpoints de modelo.
+## Smoke final
+- `/api/kit/preflight` → ok:true; `/api/kit/arm` → ok:true.
+- `/api/kit/model/canary_share?pct=0.05` → 200; `/api/kit/slo?symbol=BTCUSDT` → gate:false.
+- `/api/kit/risk` → budget ~1.0 al inicio; decrece tras trades.
+- PSI>0.3 → no-trade; 0.2<PSI≤0.3 → size halved (log).
+- `/api/kit/report/today` → ZIP real.
+- Grafana TCA: sin alertas críticas activas.
 
-## Reportes diarios
-- `python scripts/export_daily_report.py` genera CSV de órdenes y fills por día en `reports/`.
-
-## Salud general / Healthcheck
-- `python scripts/healthcheck.py` devuelve conectividad, outbox y skew con exit code.
-
----
-
-## Seguridad/Compliance
-- Secretos en Vault o variables de entorno cifradas. Rotación periódica de claves (Fernet) documentada.
-- 2FA TOTP para operaciones críticas. Roles operator/observer en API/UI.
-- Auditoría inmutable: cadena hash en logs y registros de órdenes (IDs de decisión/ejecución, timestamps µs).
-- Hardening de servidores (Windows/Linux):
-  - Mantener SO actualizado (Windows Update / apt/yum). Deshabilitar servicios innecesarios.
-  - Firewall mínimo: solo puertos estrictamente necesarios (API 8000/tcp). SSH con claves (Linux) y restricción por IP.
-  - IDS/AV recomendados: Windows Defender/ATP, Falco/OSSEC. Alertas ante cambios en binarios y reglas.
-  - Cifrado de configuración y secretos en reposo; discos cifrados (BitLocker/LUKS) en producción.
-  - Usuarios/roles mínimos, auditoría de acceso, MFA en proveedores cloud.
-- Exportes regulatorios: `scripts/export_regulatory_report.py` genera CSV con `decision_id`, `execution_id`, `dea` y timestamps µs.
-- Reporte y revisión de compliance: checklist en `implementaciones.txt`.
-
-### Checklist de salida a producción
-- KPIs en verde (latencia p95, error-rate, slippage bps, fill ratio).
-- Reconciliación sin discrepancias críticas.
-- NTP y breakers verificados.
-- Secretos y 2FA configurados.
-- Backups actuales y `restore_db.py` probado.
-
-## Staging (entorno espejo)
-- Levantar entorno staging (puerto 8080) sin tocar producción:
-  - `docker-compose -f docker-compose.staging.yml up -d`
-  - Usa `PROFILE=staging`, `UI_ROLE=observer`, `KILL_SWITCH_ARMED=true`, entrenamiento online deshabilitado.
-  - Healthchecks activos en `http://localhost:8080/health`.
+## Go/No-Go (T+48h)
+- error_rate<1%, p95_place_ms<300, slippage_bps ≤ SLO (global y símbolo).
+- Sharpe_rolling_20d≥1.0 (paper previo), DD_día≤1%.
+- rehydrate≤5s, huérfanas=0, NoTCAEvents5m=0, BudgetDepleted=0 (última hora).
 
 
 
