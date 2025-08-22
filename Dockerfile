@@ -1,3 +1,24 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+COPY requirements.txt /app/
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends curl \
+ && rm -rf /var/lib/apt/lists/* \
+ && pip install --no-cache-dir -r requirements.txt
+
+# Usuario no root (opcional)
+RUN useradd -m appuser || true
+USER appuser
+
+COPY . /app
+
+EXPOSE 8000
+CMD ["uvicorn", "nge_trader.entrypoints.api:app", "--host", "0.0.0.0", "--port", "8000"]
+
 FROM python:3.11-slim AS base
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1

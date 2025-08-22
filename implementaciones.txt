@@ -360,3 +360,4 @@ Extras recientes
 - Observabilidad/Paneles
   - [x] Grafana: dashboard TCA & Writer (JSON importable) en `grafana/dashboard_tca.json`
   - [x] v4.1 — README + docker-compose para Prometheus/Pushgateway/Grafana (carpeta `observability/` con provisioning)
+  - [x] v4.2 — “todo-en-uno” con nge_api en el mismo docker-compose (Dockerfile, .env.compose.example, Postgres y ajuste Prom targets)
