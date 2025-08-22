@@ -44,6 +44,7 @@ from nge_trader.services.control import disarm_and_cancel_if_config
 from nge_trader.services.reports import ensure_daily_report
 import os
 from nge_trader.services.risk_store import get as risk_get
+from nge_trader.services import risk_budget as _RB
 from nge_trader.services.growth import compute_growth_plan, apply_growth_to_env
 from nge_trader.services.risk import intraday_es_cvar
 from nge_trader.services.accounting import recompute_lot_accounting
@@ -55,6 +56,7 @@ from nge_trader.services.viability import compute_viability, get_live_costs
 from nge_trader.services import health as _HEALTH
 from nge_trader.ai.orchestrator import handle_task
 from nge_trader.services import model_session
+from scripts.model_canary_control import run_once as canary_control_run
 
 
 class EnvPayload(BaseModel):
@@ -1328,7 +1330,22 @@ def model_unpin() -> dict[str, Any]:
 
 @router.get("/risk")
 def kit_risk() -> dict[str, Any]:
-    return risk_get()
+    data = risk_get()
+    try:
+        used, left = _RB.get_today()
+        data.update({"used_R": float(used), "daily_budget_left": float(left)})
+    except Exception:
+        pass
+    return data
+
+
+@router.post("/risk/reset")
+def kit_risk_reset() -> dict[str, Any]:
+    try:
+        _RB.reset_today()
+        return {"ok": True}
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.get("/ready")
@@ -1350,6 +1367,39 @@ def ready() -> dict[str, Any]:
 def state() -> dict[str, Any]:
     from nge_trader.services.model_session import get as ms_get
     return {"pinned": ms_get(), "risk": risk_get(), "kill_switch": bool(Settings().kill_switch_armed), "mode": Settings().profile}
+
+
+@router.get("/model/candidates")
+def model_candidates(limit: int = 20) -> dict[str, Any]:
+    try:
+        rows = Database().list_agent_models(limit=limit)
+        return {"status": "ok", "candidates": rows}
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.post("/model/auto-control")
+def model_auto_control(enable: bool | None = None) -> dict[str, Any]:
+    # Simple: si enable es None, ejecuta una vez; si es True, responde stub (cron externo debería ejecutarlo periódicamente)
+    try:
+        if enable is None:
+            res = canary_control_run()
+            return {"status": "ok", "run": res}
+        # Persistencia del flag puede agregarse en settings/env si se requiere
+        return {"status": "ok", "enabled": bool(enable)}
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.patch("/model/canary_share")
+def model_canary_share(pct: float) -> dict[str, Any]:
+    try:
+        s = Settings()
+        setattr(s, "canary_traffic_pct", float(pct))  # type: ignore[attr-defined]
+        Database().append_audit(datetime.now(UTC).isoformat(), "canary_share_updated", None, None, f"pct={pct}")
+        return {"status": "ok", "pct": float(pct)}
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc))
 @router.get("/slo")
 def kit_slo(symbol: str | None = None) -> dict[str, Any]:
     from nge_trader.services.metrics import get_series_percentile
