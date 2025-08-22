@@ -1334,7 +1334,36 @@ def kit_risk() -> dict[str, Any]:
     data = risk_get()
     try:
         used, left = _RB.get_today()
-        data.update({"used_R": float(used), "daily_budget_left": float(left)})
+        # dd intradía estimado desde equity (si disponible)
+        try:
+            eq = Database().load_equity_curve()
+            dd_intraday_pct = float("nan")
+            if not eq.empty:
+                import pandas as _pd
+                ser = _pd.Series(eq.values).pct_change().dropna().tail(1)
+                dd_intraday_pct = float(ser.iloc[-1]) if not ser.empty else float("nan")
+        except Exception:
+            dd_intraday_pct = float("nan")
+        loss_cap_pct = float(_RB.get_today_loss_cap_pct())
+        # per-strategy and per-symbol budgets
+        try:
+            per_strategy = {}
+            per_symbol = {}
+            # usar ids básicos
+            sid = Settings().strategy_id
+            per_strategy[sid] = {"used_R": _RB.get_today_strategy(sid)[0], "left_R": _RB.get_today_strategy(sid)[1]}
+            # último símbolo activo (si existe)
+            try:
+                last_by_sym = Database().last_order_ts_by_symbol()
+                sym = max(last_by_sym.items(), key=lambda kv: kv[1])[0] if last_by_sym else None
+            except Exception:
+                sym = None
+            if sym:
+                u, l = _RB.get_today_symbol(sym)
+                per_symbol[sym] = {"used_R": u, "left_R": l}
+        except Exception:
+            per_strategy, per_symbol = {}, {}
+        data.update({"used_R": float(used), "daily_budget_left": float(left), "dd_intraday_pct": dd_intraday_pct, "loss_cap_pct": loss_cap_pct, "per_strategy": per_strategy, "per_symbol": per_symbol})
     except Exception:
         pass
     return data
@@ -1345,6 +1374,15 @@ def kit_risk_reset() -> dict[str, Any]:
     try:
         _RB.reset_today()
         return {"ok": True}
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.patch("/risk/loss_cap")
+def kit_risk_loss_cap(pct: float) -> dict[str, Any]:
+    try:
+        _RB.set_today_loss_cap_pct(float(pct))
+        return {"ok": True, "loss_cap_pct": float(pct)}
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -1469,16 +1507,32 @@ def kit_slo(symbol: str | None = None) -> dict[str, Any]:
     return {"global": {"slippage_bps": slip_global, "error_rate": err_rate_global, "p95_ms": p95_global, "gate": bool(gate_global)}, "per_symbol": per_symbol}
 
 
+class ArmPayload(BaseModel):
+    otp: str | None = None
+
+
 @router.post("/arm")
-def kit_arm() -> dict[str, Any]:
-    # Marca estado ARMADO y emite gate_budget_active según presupuesto
+def kit_arm(p: ArmPayload | None = None) -> dict[str, Any]:
+    # 2FA requerido si está en live
+    from nge_trader.config.settings import Settings as _S
+    s = _S()
+    if str(s.profile or "").lower() == "live":
+        if not p or not p.otp:
+            raise HTTPException(status_code=428, detail="Se requiere OTP para armar en live")
+        try:
+            from nge_trader.services.secret_store import SecretStore as _SS
+            if not _SS().verify_totp(p.otp):
+                raise HTTPException(status_code=401, detail="OTP inválido")
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=500, detail="No se pudo verificar OTP")
+    # Marca estado ARMADO y emite gate_budget_active
     try:
         used, left = _RB.get_today()
         set_metric_labeled("gate_budget_active", 1.0 if float(left) <= 0.0 else 0.0, {"symbol": "_GLOBAL"})
     except Exception:
         pass
-    from nge_trader.config.settings import Settings as _S
-    s = _S()
     s.kill_switch_armed = True  # type: ignore[attr-defined]
     return {"ok": True, "armed": True}
 

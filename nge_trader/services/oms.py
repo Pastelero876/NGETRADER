@@ -14,6 +14,7 @@ from nge_trader.services.metrics import inc_metric_labeled, set_metric_labeled
 from nge_trader.services.execution import SLOGate
 from nge_trader.services.rate_limiter import GlobalRateLimiter
 from decimal import Decimal, getcontext, ROUND_DOWN
+import os
 
 
 def normalize_order(raw: Dict[str, Any]) -> Dict[str, Any]:
@@ -158,6 +159,13 @@ def place_market_order(broker: Any, symbol: str, side: str, quantity: float) -> 
 	if hasattr(broker, "place_order"):
 		# Gating básico por perfil/estado/tiempo
 		s = Settings()
+		# Allowlist LIVE_SYMBOLS
+		try:
+			live_syms = {x.strip().upper() for x in str(os.getenv("LIVE_SYMBOLS", "")).split(",") if x.strip()}
+			if live_syms and symbol.upper() not in live_syms and str(s.profile or "").lower() == "live":
+				raise RuntimeError(f"Símbolo {symbol} no permitido en LIVE_SYMBOLS")
+		except Exception:
+			pass
 		# Cumplimiento: bloquear si se requiere KYC/AML y no está marcado como completado
 		if bool(getattr(s, "require_kyc_aml", False)) and not bool(getattr(s, "kyc_aml_completed", False)):
 			raise RuntimeError("Cumplimiento: KYC/AML requerido no está completado")

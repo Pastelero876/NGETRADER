@@ -68,12 +68,12 @@ groups:
   - name: canary-and-budget
     rules:
       - alert: BudgetDepleted
-        expr: gate_budget_active==1 OR daily_budget_left<=0
+        expr: gate_budget_active==1 OR daily_budget_left<=0 OR loss_cap_triggered_total>0
         for: 1m
         labels:
           severity: warning
         annotations:
-          summary: "Presupuesto diario agotado"
+          summary: "Presupuesto/loss-cap agotado"
 
       - alert: SLOGateStuck
         expr: sum_over_time(gate_slo_active[30m]) > 25
