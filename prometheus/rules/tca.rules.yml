@@ -91,6 +91,14 @@ groups:
         annotations:
           summary: "Desviación del canary share >5%"
 
+      - alert: CanaryCapReached
+        expr: canary_notional_used_pct >= 0.25
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Canario alcanzó el tope diario"
+
   - name: data-quality
     rules:
       - alert: FeaturesMissing

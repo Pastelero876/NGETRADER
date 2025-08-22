@@ -1,5 +1,49 @@
 from __future__ import annotations
 
+import json
+import sys
+
+from nge_trader.services.app_service import AppService
+
+try:
+    from prometheus_client import Counter  # type: ignore
+except Exception:  # pragma: no cover
+    Counter = None  # type: ignore
+
+recon_mismatches_total = Counter("reconciliation_mismatches_total", "mismatches por tipo", ["type"]) if Counter else None  # type: ignore
+
+
+def main() -> int:
+    app = AppService()
+    out = app.reconcile_state(resolve=False)
+    # out puede ser dict con listas o contadores por tipo; normalizamos a contadores
+    totals: dict[str, int] = {}
+    if isinstance(out, dict):
+        for k, v in out.items():
+            if isinstance(v, list):
+                totals[k] = len(v)
+            else:
+                try:
+                    totals[k] = int(v)
+                except Exception:
+                    totals[k] = 0
+    mismatches = sum(totals.values())
+    # Métrica
+    if recon_mismatches_total is not None:
+        for t, n in totals.items():
+            try:
+                recon_mismatches_total.labels(t).inc(n)  # type: ignore[attr-defined]
+            except Exception:
+                pass
+    print(json.dumps({"mismatches": totals, "total": mismatches}))
+    return 0 if mismatches == 0 else 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+
+from __future__ import annotations
+
 import sys
 from nge_trader.services.app_service import AppService
 from nge_trader.services.notifier import Notifier

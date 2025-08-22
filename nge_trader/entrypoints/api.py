@@ -58,6 +58,8 @@ from nge_trader.ai.orchestrator import handle_task
 from nge_trader.services import model_session
 from scripts.model_canary_control import run_once as canary_control_run
 from nge_trader.services.metrics import set_metric_labeled
+from nge_trader.services import canary_cap as _CC
+from nge_trader.services.strategy_flags import set_shadow as _set_shadow, list_shadow as _list_shadow
 
 
 class EnvPayload(BaseModel):
@@ -1535,6 +1537,33 @@ def kit_arm(p: ArmPayload | None = None) -> dict[str, Any]:
         pass
     s.kill_switch_armed = True  # type: ignore[attr-defined]
     return {"ok": True, "armed": True}
+
+
+@router.get("/canary/cap")
+def canary_cap_state() -> dict[str, Any]:
+    try:
+        used = float(_CC.compute_used_pct(Database()))
+        max_pct = float(getattr(Settings(), "max_canary_notional_pct_daily", 0.25) or 0.25)
+        return {"used_pct": used, "max_pct": max_pct, "gate": bool(used >= max_pct)}
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.patch("/strategy/{name}/shadow")
+def set_shadow_flag(name: str, enabled: bool) -> dict[str, Any]:
+    try:
+        _set_shadow(str(name), bool(enabled))
+        return {"ok": True, "strategy": str(name), "shadow": bool(enabled)}
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/strategy/shadow")
+def list_shadow_flags() -> dict[str, bool]:
+    try:
+        return _list_shadow()
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.post("/slo/refresh")
