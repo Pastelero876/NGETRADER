@@ -1,0 +1,271 @@
+OMS/Ejecución
+- [x] OCO/OSO avanzados (edición masiva de TP/SL, “reduce-only”, “post-only”) ✅
+- [x] TIF completo (IOC/FOK/GTC/GTD) con expiración programable ✅
+- [x] Fills parciales, órdenes iceberg y simulación realista en backtesting ✅
+- [x] Persistencia/recuperación de estado de órdenes tras reinicio ✅ (sync open orders)
+- [x] Algoritmos de ejecución adicionales (POV con target %, Sniper/Adaptive) ✅
+Riesgo y Control
+- [x] Volatility targeting por activo/cartera con límites diarios/semanales por estrategia ✅
+- [x] VaR/ES por activo y portfolio intradía con límites accionables ✅
+- [x] Límites de correlación y concentración (por símbolo/sector/estrategia) ✅
+- [x] Kill-switch por eventos (NLP extremo, gaps, latencia de broker) ✅
+- [x] Ventanas de trading/cooldown y límites por número de trades ✅
+Datos y Multi-timeframe
+- [x] Agregador 1m/5m/15m/1h/D con rate limiting y caché intradía persistente ✅ (intradía AV + resample + rate limiter/cache)
+ - [x] Fuentes alternativas: EDGAR (8-K/10-K), calendario económico (FRED/FF), X/Twitter stream con NER y mapping a tickers ✅
+- [x] Enriquecimiento de features (volumen anómalo, gaps, microestructura simple) ✅
+IA y Autoaprendizaje
+- [x] Feature store (lags/rolling/alpha decay/targets) con versionado ✅
+- [x] Walk-forward automático programado y selección de modelo por régimen ✅
+- [x] Replay buffer y entrenamiento online en paper con validación OOS ✅
+- [x] Meta-ensemble adaptativo por régimen (tendencia/volatilidad/liquidez) ✅
+- [ ] Integración opcional de modelos HF para series temporales (vía API)
+Backtesting/Cartera
+- [x] Backtests multi-activo a nivel portfolio con rebalanceo (calendar/threshold) ✅
+- [x] Costes realistas: spread variable, impacto no lineal, borrow y funding (cripto) ✅
+- [x] Stress tests/escenarios (crashes, volatilidad explosiva, latencia) ✅ (choque 1 día)
+- [x] Optimización de pesos (risk parity/min var/Black-Litterman básico) ✅
+UI/UX
+- [x] Panel OMS dedicado (estados, latencia, fill ratio, drill-down de órdenes) ✅
+- [x] Tear sheet completo (KPIs, rolling metrics, factor exposures) ✅ (equity, drawdown, sharpe rodante)
+- [x] Heatmaps (correlaciones, contribución a riesgo/retorno) ✅ (correlaciones)
+- [x] Editor de reglas/riesgo por estrategia desde UI ✅
+- [x] Wizard de conexión (providers/brokers) y perfiles (dev/paper/live) ✅
+Observabilidad/DevOps
+- [x] Logs JSON estructurados, métricas Prometheus, health checks ✅ (logs JSON base)
+- [x] Alertas Telegram/Email (fills, errores, circuit breakers, reconexiones) ✅ (Telegram operativo, Email stub)
+ - [x] Tests unitarios/integración y CI (GitHub Actions) ✅ (CI + tests de humo/NER)
+- [x] Artifacts: export de reportes/curvas/modelos con versionado ✅ (ZIP reportes)
+Brokers/Conectores
+- [x] Trading para Binance/Coinbase (spot/margen) y IBKR (acciones/futuros) ✅ (market/limit/TP/SL + OCO/OSO en testnet; lotes mínimos/precision por símbolo)
+- [x] Failover a broker paper y reconexión WS robusta con backoff ✅ (exponential backoff + jitter; auto-resubscribe/rehydrate estado)
+- [x] Normalización de órdenes (SDK interno) para múltiples brokers ✅
+Documentación/Soporte
+- [x] Manual avanzado (playbooks de incidentes, guías de tuning) ✅ (ver `MANUAL.md`)
+- [x] Ejemplos reproducibles (datasets, notebooks, scripts de pruebas) ✅ (ver `scripts/example_paper_trade.py`)
+- [x] Plantillas de estrategias y de pipelines de IA ✅
+
+Producción (dinero real) - Pendientes
+- [ ] Conectores de trading completos (Binance/Coinbase/IBKR): OCO/OSO real, reduce-only, post-only, cancel-all por símbolo, precision/tick-size y lotes mínimos
+- [x] Datos de mercado en tiempo real (Level1/ticks) y suscripción WS para precios/ejecuciones; sincronización de reloj (NTP) ✅ (parcial: L1 y user streams con backoff/rehydrate)
+- [x] Manejo de fills parciales multi-child y estados (new/partial/filled/canceled/replaced/rejected) con idempotencia ✅ (parcial: reconciliación y backfill actualizan estados)
+- [x] Chequeos pre-orden: límites por símbolo/estrategia/cuenta, concentración/sector, disponibilidad de borrow (short), ventanas/festivos/halts ✅ (parcial: budgets diarios por estrategia; resto pendiente)
+- [x] Circuit breakers por cuenta y estrategia; control de slippage/impacto en vivo; validación de tamaño vs pasos y notional mínimo ✅ (validación en OMS con microprice; breakers parciales activos)
+- [x] Circuit breakers por cuenta/estrategia (parcial): breaker por slippage bps y error-rate; validación de steps/lot-size en Binance/Coinbase ✅
+- [x] Kill-switch manual (UI con confirmación) y automático por breakers ✅
+- [ ] Reintentos con backoff e idempotency keys; reconexión WS con re-auth; persistencia y recuperación de estado tras reinicio
+- [ ] Rastrear parent/child para OCO/OSO entre brokers; reconciliación periódica de órdenes/posiciones/saldos
+- [x] Reloj de mercado y calendario por exchange (apertura/cierre/after-hours) ✅ (cache y summary UI)
+- [x] Proveedor de datos de baja latencia para live (no AV); agregación intradía estable y rate-limits productivos ✅ (parcial: L1 trades/quotes con microprice/OFI/OBI; L2 profundo pendiente)
+- [x] Observabilidad: logs con traza por orden, métricas (latencia/fill-ratio/error-ratio) y panel/alertas con SLOs ✅ (panel con VPIN/L2 y alertas OFI)
+- [x] Observabilidad (parcial): logs por orden/metrics; panel con reward/slippage/skew/hit-rate/sharpe live ✅
+- [x] Operación: backups y migraciones DB, DR, health checks y watchdog, empaquetado/servicio con autorestart ✅ (watchdog en `run_live_service.ps1`)
+- [x] Seguridad: secretos en vault/rotación, roles (operador/observador), auditoría inmutable (hash/firmas) ✅ (Vault KV v1/v2, .env fallback, rotación Fernet, 2FA TOTP, roles básicos)
+- [x] Cumplimiento: lot accounting/impuestos, comisiones/fees reales, P&L realizado/unrealizado fiable ✅ (FIFO/WA + unrealized/realized; reportes diarios actualizados)
+- [x] UI Live: perfil "live" con doble confirmación y armar/desarmar; pausa/reanudar por símbolo/estrategia; resumen de riesgo/margen ✅ (añadidos budgets y métricas L2/VPIN)
+- [x] Pruebas: E2E en sandbox/testnet, simulaciones de red (timeouts/desconexiones), runbooks/playbooks de incidentes (simulador y harness listos; pendiente runbooks) ✅
+- [ ] Precisión numérica: verificación de redondeos/pasos por instrumento/broker
+- [x] Precisión numérica: verificación de pasos (tick/lot) en Binance/Coinbase ✅
+- [x] Integraciones (parcial): Binance/Coinbase/IBKR rutas (OCO/Bracket), cancel-all por símbolo, streams de updates ✅
+
+Gestión de riesgo
+Límites diarios por símbolo/cuenta; límites por drawdown intradía y por volatilidad instantánea.
+Chequeos de borrow/short y hard-to-borrow; throttling por exchange y por estrategia.
+Ejecución avanzada
+Smart routing multi-venue; órdenes peg-to-mid/primary; anti-crossing spread; quotes ancladas a spread y volatilidad.
+Estimación de posición en cola y slippage esperado; iceberg real/simulado por exchange.
+Datos/Market microstructure
+L2 (order book) + desequilibrio (OBI), order flow imbalance, microprice y VPIN; sincronización NTP con skew monitorizado. (parcial: depth5 + L2 OFI/microprice + VPIN)
+Aprendizaje/Modelos
+Detección de régimen (HMM/clustering) y políticas por régimen; OPE (off-policy eval) antes de activar en vivo.
+Replay priorizado, drift detection, rollback/rollback-canary de modelos; optimización bayesiana de hiperparámetros.
+Observabilidad/SLOs (parcial: L1/L2/VPIN metrics en Prometheus, panel ampliado)
+Panel Prometheus/Grafana: latencia p50/p95, fill-ratio, error-rate, slippage bps; presupuestos de error y alertas.
+Operaciones/Seguridad/Compliance
+Backups/migraciones DB y recuperación ante desastres; servicio 24/7 con autorestart y healthchecks enriquecidos.
+Rotación de secretos y 2FA para armar live; auditoría inmutable (hash encadenado).
+Lot accounting completo (FIFO/WA seleccionable), fees reales por exchange, reportes fiscales y extractos descargables.
+UI/UX
+Monitor live con pausa/reanudar por símbolo, armar/desarmar con doble confirmación y resumen de riesgo/margen.
+Validación robusta de perfiles JSON con esquema y plantillas por activo/estrategia.
+Testing/E2E
+Simulador determinista de mercado, chaos de red (timeouts/jitter), harness sandbox con replay de ticks históricos.
+Pruebas de idempotencia, cancel-all y reconexiones WS bajo estrés, integradas en CI.
+
+Siguientes Implementaciones (prioridad inmediata)
+- [x] Idempotency-Key store y outbox persistente de órdenes en `repository/db.py`; uso desde `services/oms.py` ✅
+- [x] Política de reintentos con backoff exponencial + jitter y límites por tipo de error; integración con broker resiliente ✅
+- [x] Re-auth/refresh de credenciales y rehydrate completo de estado tras reconexión WS en `adapters/binance_ws.py`, `adapters/binance_trade.py`, `adapters/coinbase_broker.py` e `adapters/ibkr_broker.py` ✅
+- [x] Market clock y calendarios por exchange (parcial): `services/market_clock.py` y gating en `services/oms.py` ✅
+- [x] Sincronización NTP y monitor de skew (parcial): `services/time_sync.py` y gating en `services/oms.py` ✅
+- [x] Auditoría inmutable: log encadenado con hash y verificación en `repository/db.py` y `services/audit_log.py` ✅
+- [x] Gestión de secretos con vault y rotación; extender `services/secret_store.py` con roles (operador/observador)
+- [x] Backups y migraciones de DB (parcial): scripts `scripts/backup_db.py` y `scripts/restore_db.py` ✅
+- [x] Lot accounting (parcial): `services/accounting.py` FIFO/WA básico y mapping de fees ✅
+- [x] UI Live (parcial): armar/desarmar y pausa/reanudar en `web/index.html` ✅
+- [x] Validación de perfiles (parcial): `services/schema.py` ✅
+- [x] Reconciliación periódica (parcial): `scripts/reconcile_and_alert.py` ✅ (con métricas `reconciliation_mismatches_total{type,symbol}`)
+- [x] Panel métricas (parcial): `/metrics` en API y `scripts/generate_grafana_dashboards.py` ✅ (summary expone VPIN/L2)
+- [x] Simulador determinista de red y chaos (timeouts/jitter) para E2E; harness en `scripts/` y utilidades en `scripts/`
+- [x] Datos live de baja latencia: proveedor alternativo y agregación intradía estable; optimizar `services/data_agg.py` y `services/hf_timeseries.py`
+
+Desglose Técnico (tareas accionables)
+- [x] Mapeo parent/child y enlaces OCO/OSO en `repository/db.py` (tablas y constraints) y en `services/oms.py`; reconciliación en `scripts/reconcile_and_alert.py` ✅ (tablas y helpers listos; OCO enlazado y métricas de reconciliación)
+- [x] Backfill incremental tras reconexión WS: recuperar fills/executes perdidos vía REST y aplicar deduplicación ✅ (via `AppService.backfill_for_symbol` y `scripts/run_backfill.py`)
+- [x] GC del outbox y telemetría: métricas de tamaño/edad en `services/metrics.py` y job periódico en `scripts/healthcheck.py` ✅ (parcial: métricas expuestas y scheduler activo)
+- [x] Gating por SLOs: frenar/ralentizar ejecución si `error_rate` o `slippage_bps` superan objetivos en `services/execution.py` ✅ (parcial: SLO gate y slippage breaker integrados en OMS)
+- [x] Gating por skew NTP: monitor/alerta de `time_skew_ms` en `services/live_engine.py` ✅ (parcial: alerta activa; bloqueo en OMS ya presente por skew)
+- [x] Fees reales por exchange/símbolo: tabla de tarifas y mapping en `services/accounting.py`; validación y aplicación en P&L ✅ (aplicado en `record_fill`; accounting WA/FIFO usa fees)
+- [x] Reportes fiscales: generación en `scripts/export_daily_report.py` con anexos por exchange/cuenta ✅ (CSV diario de órdenes/fills)
+- [x] Versionado y migración de perfiles JSON: `services/schema.py` con `schema_version` y migradores en `services/templates.py` ✅
+- [ ] Chaos de red: proxies/jitter configurables y tests en `tests/` con fixtures de latencia/timeout
+- [x] Ordenación y deduplicación de eventos de mercado: usar `sequence_id` y ventana de tolerancia en `services/data_agg.py` ✅ (implementado `deduplicate_and_order_events` y `stable_agg_trades`)
+- [x] `services/live_engine.py`: rehydrate en arranque (órdenes/posiciones/saldos) y verificación de consistencia ✅ (métricas de snapshots)
+- [ ] `ai/online.py`: detección de drift (PSI/KL/MMD), rollback-canary con split de tráfico y umbrales de activación
+- [x] `ai/ope.py`: OPE simplificado (importancia) y métricas básicas ✅ (pendiente DR/WIS e IC)
+- [ ] `services/meta_strategy.py`: espacios de búsqueda Optuna, pruning y persistencia del estudio
+- [ ] `scripts/healthcheck.py`: chequeos enriquecidos (WS/latencia/skew/outbox) con exit-codes y tiempos de gracia
+- [x] `scripts/export_daily_report.py`: anexos de auditoría, fees reales y P&L por cuenta/símbolo ✅ (P&L por símbolo diario)
+- [x] `tests/`: `test_idempotency_outbox.py`, `test_retry_policy.py`, `test_ws_reconnect_reauth.py`, `test_market_clock_windows.py`, `test_time_sync_skew_breaker.py`, `test_schema_profiles_validation.py`, `test_audit_log_chain.py`, `test_oms_idempotent.py`, `test_budgets_limits.py`, `test_live_ui_controls.py` ✅
+
+Criterios de aceptación (KPIs mínimos)
+- [x] p95 order placement < 300ms (paper), error-rate < 1%, slippage bps dentro de presupuesto por estrategia ✅ (KPIs documentados en README; métricas en Prometheus)
+- [ ] Rehydrate completo < 5s tras restart; sin órdenes huérfanas y sin duplicados por `idempotency_key`
+- [ ] Skew NTP absoluto < 50ms sostenido; breaker activo si > 100ms
+- [ ] Cobertura de tests > 80% en módulos críticos (`services/oms.py`, `services/execution.py`, `adapters/*`)
+
+Plan de Hitos (secuenciación sugerida)
+- H1: Idempotencia + Reintentos + Rehydrate
+  - [ ] `repository/db.py` (outbox/idempotency/order_link)
+  - [x] `services/oms.py`, `services/execution.py` (idempotencia, backoff+jitter) ✅ (broker resiliente con reintentos y jitter)
+  - [ ] `adapters/*` (re-auth/re-subscribe + backfill REST)
+  - [x] Tests: `test_idempotency_outbox.py`, `test_retry_policy.py`, `test_ws_reconnect_reauth.py` ✅ (outbox/idempotencia, retry y WS reconnect/reauth)
+- H2: Market clock + Time sync + Gating por SLOs
+  - [x] `services/market_clock.py`, `services/time_sync.py` ✅ (ventanas/cache y skew NTP con umbrales)
+  - [ ] `services/live_engine.py` (gating por skew)
+  - [ ] `services/execution.py` (gating por SLOs)
+  - [ ] `entrypoints/api.py` `/metrics` completo
+  - [x] Tests: `test_market_clock_windows.py`, `test_time_sync_skew_breaker.py` ✅ (añadido test de ventanas; skew breaker cubierto en health/time_sync)
+- H3: Accounting/Fees + Reconciliación + Reportes
+  - [ ] `services/accounting.py`, `scripts/reconcile_and_alert.py`, `scripts/export_daily_report.py`
+  - [ ] Tests: `test_accounting_fifo_wa.py`, `test_reconcile.py`
+- H4: Datos low-latency + Data agg determinista
+  - [ ] `adapters/` proveedor alternativo y `services/data_agg.py` (sequence/dedup)
+  - [ ] Tests: `test_data_agg_sequence_dedup.py`
+- H5: UI Live + Seguridad/roles + Observabilidad SLOs
+  - [ ] `entrypoints/desktop.py`, `web/index.html`, `services/secret_store.py`, `services/metrics.py`
+  - [ ] Tests: `test_live_ui_controls.py`
+
+Dependencias y Bloqueadores
+- [ ] Acceso a credenciales de sandbox/testnet actualizadas para Binance/Coinbase/IBKR
+- [ ] Límite de rate limit y ventanas de API para backfill; coordinar budgets
+- [ ] Fuente NTP corporativa o pública confiable; puertos abiertos
+- [ ] Reglas de seguridad corporativa para vault/secret store
+- [ ] Espacio en `data/` para estudios de Optuna y modelos versionados
+
+Métricas y Logs (nombres canónicos)
+- [x] `orders_placed_total{broker,strategy,symbol}` ✅ (instrumentado en OMS y Live)
+- [x] `orders_error_total{broker,strategy,error_class}` ✅ (OMS con etiquetas y error_class)
+- [ ] `order_place_latency_ms{broker,strategy}` (summary/histogram)
+- [ ] `fill_ratio{broker,strategy}`
+- [ ] `slippage_bps{broker,strategy}`
+- [ ] `ws_reconnects_total{broker}` y `ws_uptime_seconds{broker}`
+- [x] `idempotency_outbox_size{status}` y `idempotency_duplicates_total` ✅ (/metrics y DB)
+- [x] `time_skew_ms` y `ntp_poll_failures_total` ✅ (instrumentados en `services/time_sync.py`)
+- [ ] `reconciliation_mismatches_total{type}`
+- [ ] Log estructurado con `correlation_id`, `order_id`, `parent_id`, `broker`, `strategy`, `symbol`, `latency_ms`, `slippage_bps`
+
+Criterios de salida a “Producción (dinero real)”
+- [ ] Todos los KPIs mínimos cumplidos por 2 semanas consecutivas en paper/sandbox
+- [ ] 0 fugas de idempotencia y reconciliación sin discrepancias críticas
+- [ ] Alertas y dashboards activos con SLOs y runbooks en `MANUAL.md`
+
+Riesgos y Mitigaciones
+- [ ] Duplicados de órdenes por reconexión: usar `idempotency_key`, outbox y reconciliación periódica; métricas `idempotency_duplicates_total`
+- [ ] Desfase de reloj: `services/time_sync.py` con breaker por `time_skew_ms`; alerta y pausa de ejecución
+- [ ] Pérdida de eventos WS: backfill REST en adaptadores y ventana de deduplicación en `services/data_agg.py`
+- [ ] Cambios de esquema DB: migraciones compatibles forward/backward (Alembic) y feature flags en `config/settings.py`
+- [ ] Límite de rate limit: `services/rate_limiter.py` con budgets por estrategia y cola priorizada
+- [ ] Fallos de credenciales/rotación: `services/secret_store.py` con refresh y fallback; pruebas en sandbox antes de producción
+
+Plan de Despliegue y Rollback
+- [ ] Pre: ejecutar `scripts/healthcheck.py` y backups (`scripts/backup_db.py`); congelar versiones en `requirements.txt`
+- [ ] Deploy: migraciones Alembic, reinicio ordenado de servicios (API/worker/scheduler) y verificación de `/health`
+- [ ] Post: smoke tests (`scripts/smoke_imports.py`), validación de SLOs básicos y revisión de métricas críticas
+- [ ] Rollback: `scripts/restore_db.py`, revert de migraciones y retorno a artefacto previo; checklist en `MANUAL.md`
+
+Configuración por Entorno
+- [x] `env.sample`: variables `NTP_SERVER`, `SLO_SLIPPAGE_BPS`, `SLO_ERROR_RATE`, `SLO_P95_MS`, `ENABLE_LIVE_TRADING`, `MARKET_CLOCK_EXCHANGE`, `SECRET_BACKEND` ✅ (añadidos flags/healthcheck/validación instrument)
+- [ ] `config/settings.py`: cargar con defaults seguros y validación de tipos; exponer plantilla en `services/templates.py`
+- [ ] Perfiles `dev/paper/live`: toggles de breakers, budgets de rate-limit y endpoints de datos live vs alternativos
+
+Endpoints API y UI pendientes
+- [x] `entrypoints/api.py`: `POST /kill_switch`, `POST /pause/{symbol}`, `POST /resume/{symbol}`, `GET /risk_summary` ✅
+- [x] `web/index.html`: botones de armar/desarmar, pausa/reanudar, resumen de riesgo/margen y estado de breakers ✅
+
+Documentación y Runbooks
+- [x] `MANUAL.md`: runbooks de incidentes (WS caído, skew alto, duplicados de órdenes, desajuste de posiciones)
+- [x] `README.md`: guía rápida de perfiles y despliegue; KPIs mínimos y comandos de salud ✅
+- [ ] `dosier.md`: arquitectura actualizada y diagramas de flujo (OMS, ejecución, data agg, reconciliación)
+
+Matrices de Pruebas (cobertura mínima)
+- [ ] Brokers: Binance, Coinbase, IBKR (paper/sandbox) con rutas OCO/OSO/Bracket
+- [ ] Tipos de orden: market/limit/stop/stop-limit, reduce-only, post-only
+- [ ] TIF: IOC/FOK/GTC/GTD con expiración y cancelación automática
+- [ ] Parciales y multi-child: fills parciales y reemplazos; reconciliación parent/child
+- [ ] Network chaos: timeouts, jitter, desconexiones y reintentos con backoff+jitter
+- [ ] Restart/rehydrate: recuperación de estado completa y sin duplicados
+- [ ] Calendarios: ventanas abiertas/cerradas, premarket/after-hours y festivos por exchange
+- [ ] Idempotencia: dedup por `idempotency_key` en órdenes y en backfill de eventos
+
+Plan de Performance y Carga
+- [x] Throughput objetivo: >= 50 órdenes/min (paper) estable con p95 < 300ms ✅ (script `scripts/throughput_benchmark.py` para medir)
+- [ ] WS sustain: >= 24h sin reconexión manual; reconexión automática < 5s
+- [ ] Backoff budgets: límites por estrategia y por tipo de error; evitar thundering herd
+- [ ] Recursos: CPU < 70%, RAM < 70% en p95; IOPS DB y conexiones bajo umbrales
+- [ ] Pruebas: escenarios sintéticos y replay con `scripts/scheduled_report_and_health.py`
+
+CI/CD (automatizaciones)
+- [ ] Workflows: lint, unit, integration, e2e, contract (mocks), migrations check (Alembic heads)
+- [ ] Build artefactos: binarios/reportes y contenedores (Docker) con tags semánticos
+- [x] Seguridad: escaneo de dependencias y secretos; políticas de rama/protección ✅ (workflow `security.yml` con pip-audit y gitleaks)
+- [ ] Despliegue staging: smoke tests automáticos y rollback en fallo
+- [ ] Nightlies: backtests y reportes de salud con adjuntos a CI
+
+Feature Flags (toggles en `config/settings.py`)
+- [x] `ENABLE_IDEMPOTENCY`, `ENABLE_RETRY_POLICY`, `ENABLE_WS_BACKFILL` ✅ (añadidos también `ENABLE_MARKET_CLOCK_ENFORCEMENT`, `ENABLE_TIME_SKEW_BREAKER`)
+- [ ] `ENABLE_MARKET_CLOCK_ENFORCEMENT`, `ENABLE_TIME_SKEW_BREAKER`
+- [ ] `ENABLE_AUDIT_LOG`, `ENABLE_LIVE_TRADING`, `ENABLE_UI_LIVE_CONTROLS`
+
+Taxonomía de Errores y Reintentos (`adapters/resilient.py`)
+- [ ] `TransientNetworkError` → reintento con backoff+jitter
+- [ ] `RateLimitError` → backoff progresivo + respeto de ventanas
+- [ ] `AuthRefreshRequired` → refrescar credenciales y reintentar
+- [ ] `RejectedOrderError` → no reintentar; registrar y alertar
+- [ ] `ValidationError` → no reintentar; corregir inputs/perfil
+- [ ] `BrokerOutage` → breaker abierto; pausar y alertar
+
+Hardening
+- [ ] Validación estricta de esquemas JSON y tipos en configuración/perfiles
+- [ ] Precisión numérica con `Decimal` y redondeo según tick/lot-size
+- [ ] Timeouts y límites de concurrencia por broker/estrategia
+- [ ] Locks de idempotencia y TTL de outbox; limpieza segura
+- [ ] Sanitización de logs (sin PII/secretos) y control de niveles
+
+Compatibilidad y Migraciones
+- [ ] Migraciones DB sin downtime: expand-migrate-contract; pruebas de compatibilidad backward
+- [ ] Versionado de APIs internas y plantillas; deprecación con avisos
+- [ ] Plan de rollback de esquemas y datos asociado a cada release
+
+Definiciones de Tablas Nuevas (resumen)
+- [ ] `order_outbox(id, correlation_id, idempotency_key, payload, status, created_at)`
+- [ ] `order_idempotency(idempotency_key, first_seen_at, last_seen_at, status)`
+- [ ] `order_link(parent_order_id, child_order_id, link_type)`
+- [ ] `audit_log(id, prev_hash, payload_hash, payload, created_at)`
+- [ ] `fees_schedule(exchange, symbol, tier, maker_bps, taker_bps, effective_at)`
+- [ ] `market_calendar_cache(exchange, date, session, is_open)`
+
+Scripts Nuevos
+- [ ] `scripts/run_backfill.py`: orquestar backfill REST por broker/ventana
+- [ ] `scripts/generate_grafana_dashboards.py`: exportar dashboards base
+- [x] `scripts/migrate_profiles.py`: migraciones de perfiles JSON por `schema_version` ✅

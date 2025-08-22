@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.11']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+          pip install pytest coverage ruff
+      - name: Lint
+        run: |
+          ruff --version || echo "ruff not found"
+          ruff check . || true
+          black --check . || true
+          isort --check-only . || true
+      - name: Run tests with coverage (fail under 80%)
+        run: |
+          coverage run -m pytest -q
+          coverage report --fail-under=80
+          coverage xml -o coverage.xml
+      - name: Validate historical data (ETL checks)
+        if: runner.os == 'Linux'
+        run: |
+          python scripts/validate_historical_data.py --symbols "BTCUSDT,ETHUSDT" --out reports/etl_validation.json || exit 1
+          echo "ETL report:"
+          cat reports/etl_validation.json || true
+      - name: Validate performance drift
+        if: runner.os == 'Linux'
+        run: |
+          python scripts/validate_performance_drift.py --lookback 20 --threshold 0.5 --out reports/perf_drift.json || exit 1
+          echo "Perf drift report:"
+          cat reports/perf_drift.json || true
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+
+

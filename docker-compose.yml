@@ -1,0 +1,44 @@
+version: '3.8'
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+      - INFRA_MONITOR_ENABLED=true
+      - INFRA_PROBE_URL=http://localhost:8000/health
+    healthcheck:
+      test: ["CMD", "bash", "-lc", "python -c 'import requests,sys;sys.exit(0 if requests.get(\"http://localhost:8000/health\", timeout=3).ok else 1)' "]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+  scheduler:
+    image: python:3.11-slim
+    working_dir: /app
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    command: bash -lc "pip install -r requirements.txt && python scripts/scheduled_report_and_health.py"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  worker:
+    image: python:3.11-slim
+    working_dir: /app
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    command: bash -lc "pip install -r requirements.txt && python scripts/run_live_service.py"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+

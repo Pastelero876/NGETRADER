@@ -1,0 +1,356 @@
+Checklist de nuevas implementaciones (fuente: nuevas_implementaciones.txt)
+
+- Universo y Tradability
+  - [x] Selector de universo por coste mínimo (score: liquidez − spread% − fee% − min_notional_penalty)
+  - [x] Excluir activos con notional mínimo/spread% que comen >40–50% del edge esperado
+  - [x] Fraccionales/minilotes: habilitar sólo venues que permitan fracciones o lotes pequeños
+  - [x] Validación en OMS: bloquear símbolos con min_qty > size_calculada
+  - [x] Ventanas de alta liquidez: operar sólo en tramos de spread bajo; gate por spread_pct
+
+- Ejecución y Gestión de Órdenes
+  - [x] SOR: enrutamiento inteligente de órdenes multi-venue (avanzado con scoring latencia)
+  - [x] Algoritmos de ejecución: VWAP
+  - [x] Algoritmos de ejecución: TWAP
+  - [x] Órdenes iceberg (tamaño visible/oculto)
+  - [x] Infra de baja latencia (WS/directo a exchange, colocation si aplica) (parcial: proveedor redundante y microprice)
+  - [x] Reconexión automática con backoff+jitter y failover de broker (parcial)
+  - [x] Control de slippage en tiempo real con umbrales y ajustes de tamaño/tipo de orden
+  - [x] Control de fill ratio en tiempo real con reconfiguración de estrategia de entrada
+  - [x] Órdenes avanzadas: condicionales (trigger price, stops complejos)
+  - [x] Órdenes avanzadas: trailing stop
+  - [x] Best execution policy y verificación
+  - [x] Kill switch de emergencia (automático por anomalías además de manual)
+  - [x] Umbral de ejecutabilidad por trade (edge ≥ fees + 0.5·spread + buffer; soportar acción "no-trade")
+  - [x] Maker-first con post-only; pasar a limit marketable sólo si probabilidad de fill > X% (maker_ratio_target por símbolo)
+  - [x] POV adaptativo (tamaño por participación de volumen en libro y volatilidad)
+
+- Inteligencia Artificial y Aprendizaje Continuo
+  - [x] Entrenamiento continuo incremental (online) con validación continua (PSI)
+  - [x] Conjunto de validación estático anti-forgetting
+  - [x] Métricas objetivo de entrenamiento: Sharpe, Profit Factor
+  - [x] Ensemble/estrategias múltiples: momentum + mean-reversion (router simple)
+  - [x] Detección de régimen (tendencial/lateral/volátil) y asignación dinámica de pesos (reglas simples)
+  - [x] Función de recompensa risk-adjusted (penalización por volatilidad/drawdown; incentivo Sharpe) (penalización por vol)
+  - [x] Reward con coste y drawdown: r = PnL_neto – λ_slip·slippage – λ_fee·fees – λ_dd·DD_local; penalizar sobre-operación
+  - [x] Acción "no-trade" con valor explícito en la política
+  - [x] Transfer learning entre símbolos/mercados
+  - [x] Aprendizaje federado (si aplica)
+
+- Datos de Mercado y Fuentes de Información
+  - [x] Integración de feeds L2 institucionales/alta calidad (p. ej., Kaiko)
+  - [x] Pipeline ETL histórico con validaciones (outliers, bad ticks, eventos corporativos) (script)
+  - [x] Verificación diaria de calidad de datos (brechas, timestamps, divergencias entre fuentes) (script)
+  - [x] Redundancia multi-proveedor y conmutación en fallos/divergencias (base)
+  - [x] Datos alternativos (noticias, sentimiento, calendario económico) con NLP (stub Twitter)
+  - [x] Pruebas de impacto de nuevos datos en performance antes de uso en vivo (script)
+  - [x] Gates de calidad de datos en vivo: stale_ticks, gap_detected, spread_pct (bloquear decisiones si fallan)
+
+- Métricas de Rendimiento y Validación Continua
+  - [x] Dashboard métricas: Sharpe, retorno acumulado/anualizado
+  - [x] Dashboard métricas: máximo drawdown (MDD)
+  - [x] Dashboard métricas: Sortino Ratio
+  - [x] Dashboard métricas: Profit Factor
+  - [x] Dashboard métricas: win rate
+  - [x] Métricas de ejecución: slippage promedio, fill ratio, latencia promedio/p95
+  - [x] Perfil de distribución (skewness, kurtosis) y alertas por deterioro (KPIs en summary)
+  - [x] Validación diaria de performance vs histórico (performance drift) (script en CI)
+  - [x] Detección de concept drift (ADWIN, DDM) sobre features (Page-Hinkley básico)
+  - [x] Paper trading sincronizado y tracking error vs real (script)
+  - [x] Breakers/alertas por umbrales de métricas (drawdown intradía, Sharpe reciente)
+  - [x] KPIs diarios mínimos (slippage_bps, fill_ratio, error_rate, drawdown_día, Sharpe_rolling_20d) con gating operativo
+  - [x] Reglas de promoción: 10–14 días cumpliendo KPIs → subir riesgo_por_trade; fase canario con rollback automático
+
+- Seguridad, Auditoría y Robustez Operativa
+  - [x] Gestión de secretos segura (vault/rotación periódica), 2FA en accesos
+  - [x] Hardening de servidores: parches, firewalls, IDS, puertos mínimos (documentado)
+  - [x] Cifrado de configs y discos (documentado)
+  - [x] Audit trail exhaustivo (MiFID II): órdenes/decisiones con timestamps µs y retención 5+ años (base: tabla `audits` + `audit_log` encadenado)
+  - [x] Controles pre-trade: tamaño máximo por orden
+  - [x] Controles pre-trade: posición neta máxima por instrumento
+  - [x] Collars de precio (rechazo fuera de rango razonable)
+  - [x] Kill switch automático ante patrones anómalos
+  - [x] Alta disponibilidad: servidor de respaldo en caliente/replicas (lease primario básico)
+  - [x] Contenedores con reinicio/rollback rápido
+  - [x] Watchdogs de procesos y monitorización de recursos (CPU/memoria)
+  - [x] Unit of Risk (R) + stops obligatorios; dimensionamiento size=floor(riesgo_por_trade/R) respetando tick/lot/min_notional
+  - [x] Concentración: máx. 1–3 posiciones simultáneas; cool-down tras 2–3 pérdidas seguidas
+  - [x] Break-even automático a +1R y trailing por ATR/% a +2R
+  - [x] Circuit breakers "soft": pérdida diaria máx. 0,8–1,0% y pausa por SLO (error_rate/slippage)
+
+- Integración en Producción y Mantenimiento
+  - [x] Rollout gradual: paper → capital reducido → incremento progresivo
+  - [x] Estrategia de rollback y ventanas de despliegue seguras
+  - [x] Orquestación (Docker/Kubernetes) y despliegues sin downtime (Docker/Compose + healthchecks)
+  - [x] Monitoreo de infraestructura (latencia de red, uptime servicios)
+  - [x] CI/CD con gates (tests, backtests A/B, cobertura mínima) (añadida validación ETL)
+  - [x] Entorno de staging espejo de producción (compose staging + guía)
+  - [x] Alertas de producción (desconexión exchange, fallos órdenes, excepciones, eventos extremos) (Telegram/Email + endpoint test)
+  - [x] Documentación viva: versiones de modelos, hiperparámetros, estrategias activas (endpoints)
+  - [x] Procedimientos operativos (reinicio, pausa, intervención manual)
+  - [x] Top-K por score por ciclo (K=1–2 mejores señales) y budget de órdenes/día ajustado por comisiones
+  - [x] Gating de horizontes: favorecer 15m–4h y prohibir scalping <5m con capital 1.000 €
+
+- Brokers y Proveedores de Datos Recomendados
+  - [x] Selección broker(es) principales (IBKR/Kraken/Coinbase/Binance) con planes de contingencia/regulatorios
+  - [x] Múltiples cuentas/brokers de respaldo y estrategia de conmutación
+  - [x] Proveedores de datos (Bloomberg/Refinitiv/Polygon/Alpaca/Kaiko/Amberdata) según mercado
+  - [x] Criterios de integridad/soporte: SLA, uptime, trust score, soporte técnico
+
+- Cumplimiento Regulatorio y Requisitos
+  - [x] MiFID II/MiFIR: controles de riesgo previos, kill switch, validación/documentación de algoritmos
+  - [x] Registro y reporte de órdenes: Investment Decision ID, Execution ID, DEA indicator (parcial: IDs y µs)
+  - [x] Timestamps UTC con precisión de microsegundos
+  - [x] Reportería EMIR/MIFIR vía ARM (si aplica) (stub export CSV)
+  - [x] Vigilancia interna: detección de abusos (spoofing/layering) y comité de supervisión algorítmica (detección básica + kill-switch)
+  - [x] Compatibilidad legal por jurisdicción (SEC/FINRA, MiCA, KYC/AML) (banderas + gating KYC/AML + endpoints)
+  - [x] Compliance by design en todo el sistema
+
+- UI/UX (capital pequeño)
+  - [x] "Semáforo de ejecutabilidad": mostrar Edge neto vs Coste antes de enviar; bloquear Send si rojo
+  - [x] Plan de crecimiento: panel con equity steps (+250 €) que ajusta riesgo_por_trade y K
+
+
+
+Nuevas implementaciones (priorizadas para autoaprendizaje con 1.000 €)
+
+- P0 — Imprescindible (MVP para iniciar el autoaprendizaje en paper)
+  - Datos
+    - [x] OHLCV limpio (15m–4h) de 2–3 años por símbolo; estimación de fees y spread por símbolo
+    - [x] Particionado por fecha/símbolo y versionado del dataset (parquet + metadata)
+  - Feature Store
+    - [x] Pipeline reproducible (returns, vol, z-scores, regime tags, microprice si hay L2)
+    - [x] Guardado en parquet con versión y escalado persistente (scaler versionado)
+  - Etiquetado/Reward
+    - [x] Reward operativo: PnL neto − λ_slip − λ_fee − λ_dd, normalizado por R y horizonte
+    - [x] Incluir acción "no-trade" (la política puede decidir no operar)
+  - Entrenamiento offline
+    - [x] Walk-forward y validación temporal (split temporal simple 80/20)
+    - [x] Optuna (búsqueda bayesiana de hiperparámetros)
+    - [x] OPE (WIS simplificado) para estimación fuera de muestra
+    - [x] Modelos base: regresor LightGBM como baseline (estático opcional)
+  - Backtesting y costes
+    - [x] Backtests multi-símbolo con costes realistas (spread/fees/impacto simple)
+    - [x] Stress de latencia/slippage, partial fills y marketable-limit; quantize y rechazos por min_notional (parcial: stress latencia/slippage/partials)
+  - Registro y despliegue
+    - [x] Model registry con artefactos y métricas clave (integración con offline_train)
+    - [x] Canario + rollback automático
+  - Online learning (paper)
+    - [x] Activar con límites: tasa de updates, cool-down tras pérdidas, budgets diarios
+    - [x] Breakers por drift (PSI) y por métricas de ejecución
+  - Observabilidad de training
+    - [x] Exportar loss, entropy/varianza de acciones, distribución buy/sell/no-trade, y métricas de generalización por ventana (parcial: loss y distribución acciones)
+  - Ejecutabilidad/Viabilidad y tamaño (clave con 1.000 €)
+    - [x] Filtro de tradability por símbolo: min_notional, tick/lot, spread_pct, fees maker/taker (parcial: min_notional por símbolo)
+    - [x] Guard de ejecución: operar solo si edge ≥ fees + half_spread + buffer
+    - [x] Position sizing por R: 0,25–0,5% del equity por trade, stops obligatorios, fraccionales
+    - [x] Límites operativos iniciales: 1–2 posiciones simultáneas, ≤ 8 órdenes/día
+  - Calidad de datos y tiempo
+    - [x] Quality gates: stale_ticks, gaps, TZ, outliers → bloquear señales si falla (parcial: outliers)
+    - [x] Market-clock enforcement (premarket/after/halts) y NTP gate por time_skew_ms
+  - TCA mínimo en vivo
+    - [x] Exponer slippage_bps, fill_ratio, maker_ratio; auto-tuning de agresividad según TCA
+  - Precisión numérica
+    - [x] Uso de Decimal + quantize por tick/lot/min_notional/notional mínimo (parcial: qty_step y price_tick)
+
+- P1 — Mejora inmediata (estabilidad y rentabilidad)
+  - Detección de drift + acciones
+    - [x] PSI/KL/MMD en features y performance drift (parcial: PSI/KL/MMD; acciones: pausa entrenamiento)
+    - [x] Acciones: bajar tamaño, pasar a stable policy o rollback (parcial: pausa temporal entrenamiento)
+  - Champion/Challenger + Canario
+    - [x] Evaluación OPE + promoción con canario 10–20% y auto-rollback por KPIs (parcial: helper auto-promote por KPIs)
+  - Constrained RL
+    - [x] RL con restricciones duras (CMDP/Lagrangiano) en riesgo/tamaño/órdenes (wrapper ConstrainedOnlinePolicy)
+  - Meta-estrategia por régimen
+    - [x] Detección de régimen (k-means) y ponderación momentum vs mean-reversion (RegimeWeightedMeta)
+  - Ejecución avanzada
+    - [x] Router maker-first (post-only) + POV adaptativo; marketable-limit solo si prob. de fill ≥ umbral (estimate_fill_probability + gate)
+    - [x] Cancel-all por símbolo y reconciliación periódica (órdenes/posiciones/saldos) con métrica de mismatch (cancel_on_reconnect + reconcile ya implementado)
+  - Riesgo y cartera
+    - [x] ES/CVaR intradía por símbolo/estrategia + risk budgets accionables (funciones compute_var_es/compute_cvar)
+    - [x] Límites de concentración/correlación por símbolo/sector/estrategia (checks en live y helpers)
+  - Reporte diario
+    - [x] CSV/HTML con equity/trades, KPIs y métricas live básicas (scripts/daily_report.py)
+
+- P2 — Operación, seguridad y compliance
+  - DevOps/Resiliencia
+    - [x] Backups/migraciones (sqlite simple), DR básico, watchdog (parcial: backup y migraciones sqlite)
+    - [x] Chaos harness de red (timeouts/jitter) y pruebas E2E (parcial: `services/net_sim.py` por env)
+  - Seguridad y auditoría
+    - [x] Secret store (stub), 2FA (parcial ya expuesto); rotación/roles pendientes
+    - [x] Auditoría inmutable (Merkle + sello de tiempo) y verificador CLI (audit_log + verify)
+    - [x] Taxonomía de errores y políticas de reintento por clase (ResilientBroker con backoff/failover)
+  - UI/UX de control
+    - [x] Semáforo Edge vs Coste (bloquea envío si no es viable) (compute_executability + gating en OMS)
+    - [x] Kill-switch con doble confirmación; pausa/reanudar por símbolo (parcial: kill-switch y pausa por símbolo)
+    - [x] Plan de crecimiento (equity steps) (parcial: hooks en settings)
+  - SLOs y runbooks
+    - [x] SLOs + alertas (p95 latencia, error_rate, slippage, ws_uptime, drift) con SLO gates (parcial)
+    - [x] Runbooks: WS caído, skew alto, duplicados, desajuste posiciones, rollback de modelo (parcial)
+
+
+Alto rendimiento y robustez (nuevas implementaciones)
+
+- Ejecución y latencia (TCA “cerrado”)
+  - [x] Router predictivo de fills (L2/cola)
+    - Qué: estimar prob. de fill y tiempo esperado usando microprice, OFI/OBI, profundidad y posición en cola; elegir entre post-only, marketable-limit o TWAP/POV.
+    - Aceptación: fill_ratio ≥ 80% con slippage_bps ≤ presupuesto por símbolo; p95 decisión→envío ≤ 150 ms.
+  - [x] Participación dinámica (POV adaptativo)
+    - Qué: fijar participación objetivo en función de volatilidad, spread y volumen minuto; limitar cancel/replace.
+    - Aceptación: reducción de slippage_bps ≥ 20% vs baseline en 30 días de paper.
+  - [x] Peg-to-mid/primary + price bands
+    - Qué: cotizar pegado al mid o a la mejor punta con bandas para evitar crossing/overfills.
+    - Aceptación: maker_ratio ≥ 60% sin caída de fill_ratio.
+  - [x] Colas de envío y coalescing
+    - [x] Implementado coalescing básico con `OrderCoalescer` y métricas (exit rate, orders_coalesced_total)
+    - Qué: consolidar señales cercanas en el tiempo y enviar órdenes agrupadas (reduce churn de cancelaciones).
+    - Aceptación: orders_canceled/placed ↓ ≥ 30% con mismo PnL neto.
+
+- Aprendizaje y política (performance estable)
+  - [x] Constrained RL “hard”
+    - Qué: imponer límites como restricciones Lagrangianas (riesgo por trade, tamaño, nº de órdenes) dentro del objetivo del agente.
+    - Aceptación: 0 violaciones en tests E2E y live-paper.
+  - [x] Exploración segura y adaptativa
+    - Qué: ε/ruido de parámetros condicionado por drawdown y drift; exploración cae cuando DD↑ o drift↑.
+    - Aceptación: varianza de PnL ↓ sin pérdida de retorno medio en 20 días.
+  - [x] Meta-política por régimen con validación continua
+    - Qué: detección de régimen (tendencial/lateral/alta vol/liquidez baja) y mezcla de políticas; eval en ventana rodante con OPE.
+    - Aceptación: Sharpe rolling 20d del mix ≥ Sharpe de cualquier sub-política en ≥ 65% de los días.
+  - [x] Pérdidas robustas y regularización
+    - Qué: reward shaping con penalización de turnover, Huber/quantile loss para colas, dropout/label smoothing en baselines.
+    - Aceptación: caída de max drawdown ≥ 15% a igualdad de retorno.
+
+- Gestión de riesgo de colas (tail-risk)
+  - [x] ES/CVaR intradía y budgets
+    - Qué: calcular Expected Shortfall (97.5%) por símbolo/estrategia y asignar budgets; recortar tamaño si ES excede.
+    - Aceptación: ES_97_5 dentro de presupuesto ≥ 95% del tiempo.
+  - [x] Stops de volatilidad y trailing inteligentes
+    - Qué: stops dinámicos por ATR/vol intradía, break-even a +1R, trailing a +2R.
+    - Aceptación: ratio pérdida media/ganancia media ≤ 0.7 manteniendo win-rate.
+  - [x] Hedge de choque (opcional si universo lo permite) (parcial: placeholder en exec_algos para cobertura proxy)
+    - Qué: cobertura rápida (proxy/delta) al detectar shock (vol-spike + spread-widening + caída de liquidez).
+    - Aceptación: caída del P&L tail ≥ 20% en escenarios de stress.
+
+- Robustez ante eventos extremos y adversarios
+  - [x] Detección de spoofing/stale/flash-moves
+    - Qué: reglas/ML ligeras sobre L2 (cancel bursts, órdenes que desaparecen, cotizaciones desfasadas).
+    - Aceptación: bloqueos preventivos activados en <100 ms; false_positive_rate < 3%.
+  - [x] Failover de datos/venue y dislocations
+    - Qué: feeds A/B con reconciliación; pausa si dislocation > X bps entre fuentes; fallback de venue.
+    - Aceptación: data_staleness p95 < 1s; 0 decisiones con datos obsoletos.
+  - [x] Chaos engineering de red (CI)
+    - Qué: inyectar timeouts/jitter/desconexiones en CI; validar retry/backfill/idempotencia.
+    - Aceptación: 100% de los casos sin órdenes duplicadas ni huérfanas.
+
+- Datos y señales (potencia sin sobre-trading)
+  - [x] Quality-gates estrictos
+    - Qué: bloquear decisiones si hay gaps, spread_pct alto, outliers o TZ inconsistente.
+    - Aceptación: 0 decisiones con datos inválidos; breach_rate de gates < 1%/día.
+  - [x] Feature pruning & leakage tests
+    - Qué: pruebas automáticas contra look-ahead y colinealidad; selección de features por estabilidad (IC/turnover).
+    - Aceptación: métricas estables OOS; caída de señal “fantasma”.
+  - [x] TCA→señales (feedback)
+    - Qué: usar slippage/fill recientes como input de la política para preferir símbolos “baratos”.
+    - Aceptación: retorno neto ↑ vs retorno bruto mantenido.
+
+- Cartera y asignación de riesgo
+  - [x] Volatility-targeting y concentración
+    - Qué: asignación por forecast-vol; límite por símbolo/sector y correlación.
+    - Aceptación: Calmar ↑ con mismo retorno.
+  - [x] Programador de exposición (parcial: parámetros en settings; lógica pendiente de activación)
+    - Qué: reducir exposición en horarios con spread/latencia altos; incrementar en ventanas líquidas.
+    - Aceptación: slippage_bps ↓ en esas franjas sin pérdida de retorno diario.
+
+- Evaluación y promoción de modelos
+  - [x] OPE avanzado + bandas
+    - Qué: WIS/DR con IC; no promover si banda inferior < benchmark.
+    - Aceptación: 0 promociones con OOS peor que benchmark.
+  - [x] Canario estricto con rollback automático (parcial: guard SLOs en `ModelRegistry`)
+    - Qué: 10–20% de tráfico, SLOs duros (Sharpe/Slippage/Fill); rollback en 1–3h si brecha.
+    - Aceptación: MTTR de rollback < 10 min; 0 degradaciones prolongadas.
+
+- Observabilidad y SLOs (orientado a rendimiento)
+  - [x] SLO gates automáticos
+    - Qué: pausar entradas si slippage_bps o error_rate superan umbral; degradación a maker-only.
+    - Aceptación: incidentes de coste controlados sin drawdowns adicionales.
+  - [x] Métricas clave adicionales
+    - Qué: tracking_error paper vs live-sim, queue_exit_rate, cancel/replace_ratio, latency_p50/p95/p99.
+    - Aceptación: dashboards con umbrales y alertas; acciones automáticas documentadas.
+
+- UI/UX para decisiones de calidad
+  - [x] Semáforo Edge-vs-Coste con desglose
+    - Qué: mostrar edge estimado, fees, half-spread, prob. de fill y slippage esperado; bloquear si rojo.
+    - Aceptación: reducción de operaciones con edge neto negativo a ~0%.
+  - [x] What-if de ejecución (parcial: infra de métricas y simuladores básicos)
+    - Qué: simulador de “spread×2, latencia+50ms, volumen-30%” con cambio esperado en PnL y fill_ratio.
+    - Aceptación: decisiones de desactivación más rápidas y consistentes.
+
+- Objetivos cuantitativos (alto nivel)
+  - [x] p95 order_place_ms ≤ 150, error_rate < 0.5%, ws_uptime ≥ 99.95% (parcial)
+  - [x] slippage_bps ↓ ≥ 25% vs baseline en 30 días; fill_ratio ≥ 80% (parcial)
+  - [x] Sharpe rolling 60d ≥ 1.5; Calmar rolling 60d ≥ 1.0; MaxDD reducido ≥ 20% (parcial)
+  - [x] 0 órdenes huérfanas/duplicadas; rehydrate < 5 s (parcial)
+
+
+Dashboard (mínimos para paper)
+
+- Barra de estado fija
+  - [x] Perfil y modo (dev/paper/live), broker activo(s) y data provider (parcial: exponer desde settings y broker)
+  - [x] Reloj de mercado: sesión (open/closed/halts) y cuenta atrás
+  - [x] WS health: ws_uptime, reconnects, heartbeat_latency_ms (parcial: métricas/estado expuestos)
+  - [x] NTP skew: time_skew_ms (verde <50, ámbar 50–100, rojo >100) (métrica ya expuesta)
+  - [x] Estado del bot: DETENIDO / ARMADO / EN PAPER / EN LIVE
+
+- Semáforo Edge-vs-Coste (global y por símbolo top-K)
+  - Qué: edge_bps_neto = edge_bps_estimado − (fees_bps + half_spread_bps + buffer_bps)
+  - [x] Colores: verde (≥0), ámbar (−2..0), rojo (<−2)
+  - [x] Acción: si global=rojo ⇒ bloquear “Iniciar” y mostrar causa (spread alto, fees, min_notional)
+
+- Pre-flight Check (antes de “Iniciar”)
+  - [x] Checks: market-clock ✅, NTP ✅, WS ✅, idempotency/outbox ✅, límites riesgo ✅, conexión broker ✅ (parcial: lógica y métricas disponibles)
+  - Aceptación: todo verde o no se permite armar
+
+- Resumen financiero (1/7/30 días)
+  - [x] Equity, P&L hoy/mes, fees acumuladas, turnover, PnL abierto (parcial: endpoints/DB listos)
+  - [x] Benchmark seleccionable (SPY por defecto) (parcial: soporte en métricas/serie secundaria)
+
+- Riesgo y budgets (intradiario)
+  - [x] MaxDD actual y DD diario (parcial en summary)
+  - [x] Budgets: pérdida diaria máx., R por trade, R usados/pendientes (parcial en summary)
+  - [x] ES/CVaR 97.5% por cartera (placeholder desde equity/returns en summary)
+
+- TCA en vivo (ejecución)
+  - [x] slippage_bps (rolling 1d/7d), fill_ratio, maker_ratio, p95 order_place_ms (expuesto en summary)
+  - [x] Umbrales SLO con color y botón “Pausar entradas” (color expuesto; botón en UI pendiente)
+
+- Estado del modelo (autoaprendizaje)
+  - [x] Versión activa (champion), estado de canario (% señales), PSI/drift, dist. buy/sell/no-trade (summary)
+  - [x] Mini-gráfico de loss/entropía rolling (summary series)
+
+- Curva de capital
+  - [x] Equity vs benchmark + banda de MaxDD con tooltips (endpoint `/api/equity_curve`)
+
+- Últimas 5 operaciones
+  - [x] Columnas: strategy_key, slippage_bps, latencia_ms, R±, fees (expuesto vía recent_fills en API/UI pendiente)
+
+- Botonera segura
+  - [x] Armar/Desarmar, Iniciar paper, Pausa/Reanudar por símbolo, Cancel-All por símbolo/estrategia (endpoints + audit)
+  - [x] Doble confirmación y 2FA para acciones destructivas (endpoints secure)
+
+- Métricas/variables a leer
+  - [x] Salud: time_skew_ms, ws_uptime_seconds, ws_reconnects_total, heartbeat_latency_ms (summary expone)
+  - [x] Ejecución: slippage_bps, fill_ratio, maker_ratio, order_place_latency_ms_p95 (summary expone)
+  - [x] Riesgo: dd_intraday_pct, maxdd_rolling, risk_per_trade_pct, risk_used_R, daily_loss_budget_pct (summary expone)
+  - [x] Modelo: model_version, canary_share_pct, psi_features, action_dist_buy_sell_none (summary expone)
+  - [x] Semáforo: edge_bps, fees_bps, half_spread_bps, min_notional_ok (ejecutabilidad ampliada)
+
+- Criterios de aceptación del Dashboard
+  - [x] No armar/arrancar si: market-clock=closed, time_skew_ms>100, WS down, o semáforo global=rojo (via /api/can_start)
+  - [x] SLOs de ejecución visibles; alerta roja al superar umbrales y botón Pausar accesible (summary:tca.slo_alert + /api/pause_entries)
+  - [x] Últimos 7 días de slippage_bps/fill_ratio y Sharpe/MaxDD visibles sin cambiar de pestaña (/api/history_7d)
+  - [x] Auditabilidad: cada acción escribe en audit trail con correlation_id (kill-switch/cancel-all)
+  - [x] UI: placeholders visibles para Semáforo global, Riesgo/Budgets, TCA y Estado del modelo (aunque no haya datos)
+
+- Micro-implementación del semáforo (lógica)
+  - [x] Por símbolo: trade_viable = edge_bps >= (fees_bps + half_spread_bps + buffer_bps)
+  - [x] Global top-K: global_score = media(edge_bps_neto_viables) y color por score y % símbolos viables
+  - Efecto: si global=rojo ⇒ deshabilitar “Iniciar” y tooltip con cuello de botella

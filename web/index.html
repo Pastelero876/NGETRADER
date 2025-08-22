@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NGEtrader UI</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 20px; color: #0f172a; }
+      .card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+      label { display: block; margin-top: 8px; font-weight: 600; }
+      input { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #cbd5e1; border-radius: 6px; }
+      button { margin-top: 12px; padding: 10px 14px; border: 0; border-radius: 6px; background: #2563eb; color: white; cursor: pointer; }
+      button.secondary { background: #64748b; }
+      pre { background: #0b1020; color: #e5e7eb; padding: 12px; border-radius: 8px; overflow: auto; }
+      .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 8px; }
+      .metric { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; }
+      .metric .label { font-size: 12px; color: #475569; }
+      .metric .value { font-size: 18px; font-weight: 700; color: #0f172a; }
+      .bar { width: 100%; height: 8px; background: #e2e8f0; border-radius: 6px; overflow: hidden; margin-top: 6px; }
+      .bar > span { display: block; height: 100%; background: linear-gradient(90deg, #22c55e, #f59e0b, #ef4444); width: 0%; transition: width .3s ease; }
+    </style>
+  </head>
+  <body>
+    <h1>NGEtrader</h1>
+    <div class="card">
+      <h2>Configuración</h2>
+      <div>
+        <label>Proveedor de datos</label>
+        <input id="data_provider" placeholder="alpha_vantage" />
+      </div>
+      <div>
+        <label>Broker</label>
+        <input id="broker" placeholder="paper" />
+      </div>
+      <div>
+        <label>Alpha Vantage API Key</label>
+        <input id="alpha_key" placeholder="tu_api_key" />
+      </div>
+      <button id="save">Guardar</button>
+    </div>
+
+    <div class="card" id="kit-panel">
+      <h2>Semáforo (preview /api/kit)</h2>
+      <div id="global-semaforo" class="light gray">--</div>
+      <ul id="symbols-semaforo"></ul>
+      <h2>Riesgo (preview /api/kit/risk)</h2>
+      <div id="risk-box">--</div>
+      <h2>SLO por símbolo (7d)</h2>
+      <table id="slo-table"></table>
+    </div>
+
+    <div class="card">
+      <h2>Semáforo (preview rápido /api/kit)</h2>
+      <div id="global-semaforo" class="light gray" style="font-weight:700;margin-bottom:6px">--</div>
+      <ul id="symbols-semaforo" style="list-style: none; padding-left: 0;"></ul>
+      <div style="margin-top:6px">
+        <button onclick="previewIntent('BTCUSDT', 8.0, 4.0, 2.0)">Preview intención BTC</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Backtest rápido</h2>
+      <div>
+        <label>Símbolo</label>
+        <input id="symbol" placeholder="AAPL" />
+      </div>
+      <button id="run">Ejecutar</button>
+      <button id="load" class="secondary">Cargar Config</button>
+      <pre id="out">Listo.</pre>
+    </div>
+
+    <div class="card">
+      <h2>Live Controls</h2>
+      <div>
+        <label>Símbolo</label>
+        <input id="live_symbol" placeholder="BTCUSDT" />
+      </div>
+      <div id="status" style="margin-top:6px; font-size: 14px; color:#334155;">Estado: --</div>
+      <button id="arm">Armar Kill-Switch</button>
+      <button id="disarm" class="secondary">Desarmar Kill-Switch</button>
+      <div style="margin-top:6px">
+        <label>Código 2FA (opcional)</label>
+        <input id="code2fa" placeholder="000000" />
+      </div>
+      <div style="margin-top:6px">
+        <button id="setup2fa" class="secondary">Configurar 2FA</button>
+        <div id="uri2fa" style="font-size:12px;color:#475569;margin-top:4px;"></div>
+        <img id="qr2fa" style="display:none;margin-top:6px;border:1px solid #e2e8f0;border-radius:6px;" />
+      </div>
+      <button id="pause">Pausar Símbolo</button>
+      <button id="resume" class="secondary">Reanudar Símbolo</button>
+      <button id="refresh" class="secondary">Refrescar Resumen</button>
+      <div style="margin-top:8px">
+        <h3>Modelos (Canary)</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <input id="model_version" placeholder="v1.0.0" />
+          <input id="model_path" placeholder="/models/model.onnx" />
+        </div>
+        <textarea id="model_config" placeholder="{\n  \"lookback\": 30\n}" style="width:100%;height:90px;margin-top:6px"></textarea>
+        <textarea id="model_metrics" placeholder="{\n  \"val_score\": 0.12\n}" style="width:100%;height:60px;margin-top:6px"></textarea>
+        <div>
+          <button id="model_publish">Publicar Canary</button>
+          <button id="model_promote" class="secondary">Promover Canary</button>
+          <button id="model_rollback" class="secondary">Rollback</button>
+        </div>
+      </div>
+      <div class="metrics" id="metrics">
+        <div class="metric">
+          <div class="label">Slippage medio (bps)</div>
+          <div class="value" id="m_slip">--</div>
+        </div>
+        <div class="metric">
+          <div class="label">Latencia último envío (ms)</div>
+          <div class="value" id="m_lat">--</div>
+        </div>
+        <div class="metric">
+          <div class="label">Fills totales</div>
+          <div class="value" id="m_fills">--</div>
+        </div>
+        <div class="metric">
+          <div class="label">Error-rate reciente</div>
+          <div class="value" id="m_err">--</div>
+          <div class="bar"><span id="bar_err"></span></div>
+        </div>
+        <div class="metric" style="grid-column: span 3;">
+          <div class="label">Rate limit restante</div>
+          <div class="value"><span id="m_rl_rem">--</span> / <span id="m_rl_cap">--</span></div>
+          <div class="bar"><span id="bar_rl"></span></div>
+        </div>
+        <div class="metric">
+          <div class="label">Budget estrategia (hoy)</div>
+          <div class="value" id="m_bud_strat">--</div>
+        </div>
+        <div class="metric">
+          <div class="label">Budget símbolo (hoy)</div>
+          <div class="value" id="m_bud_sym">--</div>
+        </div>
+        <div class="metric">
+          <div class="label">Budget cuenta (hoy)</div>
+          <div class="value" id="m_bud_acc">--</div>
+        </div>
+        <div class="metric">
+          <div class="label">VPIN</div>
+          <div class="value" id="m_vpin">--</div>
+        </div>
+        <div class="metric">
+          <div class="label">L2 OFI</div>
+          <div class="value" id="m_l2_ofi">--</div>
+        </div>
+        <div class="metric">
+          <div class="label">L2 microprice</div>
+          <div class="value" id="m_l2_mp">--</div>
+        </div>
+        <div class="metric" style="grid-column: span 3;">
+          <div class="label">Drift PSI</div>
+          <div class="value" id="m_psi">--</div>
+          <div class="bar"><span id="bar_psi"></span></div>
+        </div>
+        <div class="metric" style="grid-column: span 3;">
+          <div class="label">Fill ratio</div>
+          <div class="value" id="m_fr">--</div>
+          <div class="bar"><span id="bar_fr"></span></div>
+        </div>
+        <div class="metric" style="grid-column: span 3;">
+          <div class="label">Mercado</div>
+          <div class="value" id="m_mkt">--</div>
+        </div>
+        <div class="metric" style="grid-column: span 3;">
+          <div class="label">Sesión</div>
+          <div class="value" id="m_sess">--</div>
+        </div>
+      </div>
+      <pre id="summary" style="margin-top:10px;">(sin datos)</pre>
+      <div id="alerts" style="margin-top:8px;color:#b91c1c;font-weight:600"></div>
+    </div>
+
+    <script>
+      async function loadConfig() {
+        const res = await fetch('/api/config');
+        if (!res.ok) { throw new Error('No se pudo cargar la configuración'); }
+        const cfg = await res.json();
+        document.getElementById('data_provider').value = cfg.data_provider ?? '';
+        document.getElementById('broker').value = cfg.broker ?? '';
+        document.getElementById('alpha_key').value = cfg.alpha_vantage_api_key ?? '';
+      }
+      async function saveConfig() {
+        const payload = {
+          data_provider: document.getElementById('data_provider').value,
+          broker: document.getElementById('broker').value,
+          alpha_vantage_api_key: document.getElementById('alpha_key').value,
+        };
+        const res = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const data = await res.json();
+        document.getElementById('out').textContent = JSON.stringify(data, null, 2);
+      }
+      async function runBacktest() {
+        const symbol = document.getElementById('symbol').value || 'AAPL';
+        const res = await fetch(`/api/backtest/${encodeURIComponent(symbol)}`);
+        const data = await res.json();
+        document.getElementById('out').textContent = JSON.stringify(data, null, 2);
+      }
+      document.getElementById('save').addEventListener('click', saveConfig);
+      document.getElementById('run').addEventListener('click', runBacktest);
+      document.getElementById('load').addEventListener('click', loadConfig);
+      document.getElementById('arm').addEventListener('click', async () => {
+        const code = (document.getElementById('code2fa').value || '').trim();
+        if (code) {
+          const res = await fetch(`/api/kill_switch_secure?armed=true&code=${encodeURIComponent(code)}`, { method: 'POST' });
+          if (!res.ok) { alert('2FA inválido'); return; }
+        } else {
+          await fetch('/api/kill_switch?armed=true', { method: 'POST' });
+        }
+        alert('Kill-switch armado');
+        refreshStatus();
+      });
+      document.getElementById('disarm').addEventListener('click', async () => {
+        const code = (document.getElementById('code2fa').value || '').trim();
+        if (code) {
+          const res = await fetch(`/api/kill_switch_secure?armed=false&code=${encodeURIComponent(code)}`, { method: 'POST' });
+          if (!res.ok) { alert('2FA inválido'); return; }
+        } else {
+          await fetch('/api/kill_switch?armed=false', { method: 'POST' });
+        }
+        alert('Kill-switch desarmado');
+        refreshStatus();
+      });
+      document.getElementById('setup2fa').addEventListener('click', async () => {
+        try {
+          const r = await fetch('/api/2fa/setup');
+          const d = await r.json();
+          if (!d || d.status !== 'ok') { alert('Error al configurar 2FA'); return; }
+          document.getElementById('uri2fa').textContent = d.otpauth_uri;
+          // Render QR con un servicio simple
+          const img = document.getElementById('qr2fa');
+          img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(d.otpauth_uri);
+          img.style.display = 'block';
+          alert('2FA configurado. Escanea el QR con tu app TOTP.');
+        } catch { alert('Error 2FA'); }
+      });
+      document.getElementById('pause').addEventListener('click', async () => {
+        const s = document.getElementById('live_symbol').value || 'BTCUSDT';
+        await fetch('/api/pause/' + encodeURIComponent(s), { method: 'POST' });
+        alert('Pausado ' + s);
+        refreshStatus();
+      });
+      document.getElementById('resume').addEventListener('click', async () => {
+        const s = document.getElementById('live_symbol').value || 'BTCUSDT';
+        await fetch('/api/resume/' + encodeURIComponent(s), { method: 'POST' });
+        alert('Reanudado ' + s);
+        refreshStatus();
+      });
+      document.getElementById('model_publish').addEventListener('click', async () => {
+        try {
+          const v = (document.getElementById('model_version').value||'').trim();
+          const p = (document.getElementById('model_path').value||'').trim();
+          const cj = document.getElementById('model_config').value || '{}';
+          const mj = document.getElementById('model_metrics').value || null;
+          const url = `/api/model/publish?version=${encodeURIComponent(v)}&path=${encodeURIComponent(p)}&config_json=${encodeURIComponent(cj)}${mj?`&metrics_json=${encodeURIComponent(mj)}`:''}`;
+          const r = await fetch(url, { method: 'POST' });
+          if (!r.ok) { alert('Error al publicar'); return; }
+          alert('Canary publicado');
+        } catch { alert('Error publish'); }
+      });
+      document.getElementById('model_promote').addEventListener('click', async () => {
+        const r = await fetch('/api/model/promote_canary', { method: 'POST' });
+        if (!r.ok) { alert('Error al promover'); return; }
+        alert('Canary promovido a primary');
+      });
+      document.getElementById('model_rollback').addEventListener('click', async () => {
+        const r = await fetch('/api/model/rollback', { method: 'POST' });
+        if (!r.ok) { alert('Error en rollback'); return; }
+        alert('Rollback ejecutado');
+      });
+      async function refreshSummary() {
+        try {
+          const r = await fetch('/api/summary');
+          const d = await r.json();
+          document.getElementById('summary').textContent = JSON.stringify(d, null, 2);
+          // métricas
+          const m = d.metrics || {};
+          document.getElementById('m_slip').textContent = (m.slippage_bps_avg ?? 0).toFixed(2);
+          document.getElementById('m_lat').textContent = (m.order_place_latency_ms_last ?? 0).toFixed(1);
+          document.getElementById('m_fills').textContent = Number(m.fills_total ?? 0).toFixed(0);
+          document.getElementById('m_err').textContent = ((m.slo_error_rate_recent ?? 0) * 100).toFixed(1) + '%';
+          const errPct = Math.max(Math.min((m.slo_error_rate_recent ?? 0), 1), 0) * 100;
+          document.getElementById('bar_err').style.width = errPct + '%';
+          const rem = Number(m.rate_limit_remaining ?? 0);
+          const cap = Number(m.rate_limit_capacity ?? 0) || 1;
+          document.getElementById('m_rl_rem').textContent = rem.toFixed(0);
+          document.getElementById('m_rl_cap').textContent = cap.toFixed(0);
+          document.getElementById('bar_rl').style.width = Math.max(Math.min((1 - (rem / cap)) * 100, 100), 0) + '%';
+          document.getElementById('m_mkt').textContent = d.market_open ? 'ABIERTO' : 'CERRADO';
+          const sess = d.session || {};
+          document.getElementById('m_sess').textContent = `${sess.session || '--'} (R:${sess.regular_open||'-'}-${sess.regular_close||'-'}; P:${sess.premarket_open||'-'}; A:${sess.after_hours_close||'-'})`;
+          // budgets
+          document.getElementById('m_bud_strat').textContent = Number(m.orders_sent_today_strategy ?? 0).toFixed(0);
+          document.getElementById('m_bud_sym').textContent = Number(m.orders_sent_today_symbol ?? 0).toFixed(0);
+          document.getElementById('m_bud_acc').textContent = Number(m.orders_sent_today_account ?? 0).toFixed(0);
+          // L2/VPIN (si están expuestos vía /metrics, podrían consumirse por Prometheus; aquí usamos summary si existe)
+          document.getElementById('m_vpin').textContent = (m.vpin ?? 0).toFixed(3);
+          document.getElementById('m_l2_ofi').textContent = (m.l2_ofi ?? 0).toFixed(3);
+          document.getElementById('m_l2_mp').textContent = (m.l2_microprice ?? 0).toFixed(2);
+          // drift PSI
+          const psi = Number(m.model_drift_psi ?? 0);
+          document.getElementById('m_psi').textContent = psi.toFixed(3);
+          const psiThr = Number(d?.thresholds?.drift_psi_threshold ?? 0.2);
+          document.getElementById('bar_psi').style.width = Math.max(Math.min((psi / (psiThr || 0.2)) * 100, 100), 0) + '%';
+          // fill ratio
+          const fr = Number(m.fill_ratio ?? 0);
+          document.getElementById('m_fr').textContent = (fr * 100).toFixed(1) + '%';
+          document.getElementById('bar_fr').style.width = Math.max(Math.min(fr * 100, 100), 0) + '%';
+          // Alertas por umbral de error-rate y slippage
+          const alerts = [];
+          const maxErr = Number(d?.thresholds?.max_error_rate ?? 0.2);
+          const maxSlip = Number(d?.thresholds?.max_slippage_bps ?? 50);
+          if (Number(m.slo_error_rate_recent ?? 0) > maxErr) {
+            alerts.push(`Error-rate ${Number(m.slo_error_rate_recent).toFixed(3)} > umbral ${maxErr.toFixed(3)}`);
+          }
+          if (Math.abs(Number(m.slippage_bps_avg ?? 0)) > maxSlip) {
+            alerts.push(`Slippage ${Number(m.slippage_bps_avg).toFixed(2)} bps > umbral ${maxSlip.toFixed(2)} bps`);
+          }
+          if (psi > psiThr) {
+            alerts.push(`Drift PSI ${psi.toFixed(3)} > umbral ${psiThr.toFixed(3)}`);
+          }
+          document.getElementById('alerts').textContent = alerts.join(' | ');
+        } catch (e) {
+          document.getElementById('summary').textContent = 'Error al cargar resumen';
+        }
+      }
+      document.getElementById('refresh').addEventListener('click', refreshSummary);
+      async function refreshStatus() {
+        try {
+          const r = await fetch('/api/status');
+          if (!r.ok) return;
+          const st = await r.json();
+          document.getElementById('status').textContent = `Estado: rol=${st.role}, kill=${st.kill_switch_armed ? 'ARMADO' : 'DESARMADO'}, pausados=${(st.paused_symbols||[]).join(',') || 'ninguno'}`;
+          // Ocultar/inhabilitar controles si rol no es operator
+          const isOp = String(st.role || '').toLowerCase() === 'operator';
+          ['arm','disarm','pause','resume','refresh'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) { el.disabled = !isOp; }
+          });
+        } catch {}
+      }
+      loadConfig().catch(()=>{});
+      refreshStatus();
+      async function getSummaryKit(){
+        try{
+          const r = await fetch('/api/kit/ui/summary');
+          if(!r.ok) return;
+          const s = await r.json();
+          const g = document.getElementById('global-semaforo');
+          if(g){ g.textContent = String(s.viability_global||'--').toUpperCase(); g.className = `light ${s.viability_global||'gray'}`; }
+          const list = document.getElementById('symbols-semaforo');
+          if(list){
+            list.innerHTML = '';
+            const v = s.viability || {};
+            Object.entries(v).forEach(([sym,val])=>{
+              const li = document.createElement('li');
+              const cost = ((val.fees_bps||0)+(val.half_spread_bps||0)+(val.buffer_bps||0)).toFixed(1);
+              li.textContent = `${sym}: ${val.trade_viable?'OK':'KO'} (edge=${val.edge_bps} | cost=${cost})`;
+              li.style.color = val.trade_viable ? '#16a34a' : '#ef4444';
+              list.appendChild(li);
+            });
+          }
+        }catch{}
+      }
+      async function previewIntent(symbol, edge_bps, fees_bps, half_spread_bps){
+        try{
+          const r = await fetch('/api/kit/intent/preview', {method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({symbol, edge_bps, fees_bps, half_spread_bps})});
+          const j = await r.json();
+          alert(`Decision: ${j.decision} | edge=${j.edge} | costs=${j.costs_bps}`);
+        }catch{ alert('Error preview'); }
+      }
+      refreshSummary();
+      getSummaryKit();
+      // Auto-refresh cada 10s
+      setInterval(() => { refreshStatus(); refreshSummary(); getSummaryKit(); }, 10000);
+    </script>
+    <script src="/js/kit.js"></script>
+  </body>
+  </html>
+
+
