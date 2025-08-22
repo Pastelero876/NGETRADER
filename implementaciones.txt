@@ -354,3 +354,8 @@ Dashboard (mínimos para paper)
   - [x] Por símbolo: trade_viable = edge_bps >= (fees_bps + half_spread_bps + buffer_bps)
   - [x] Global top-K: global_score = media(edge_bps_neto_viables) y color por score y % símbolos viables
   - Efecto: si global=rojo ⇒ deshabilitar “Iniciar” y tooltip con cuello de botella
+  
+Extras recientes
+
+- Observabilidad/Paneles
+  - [x] Grafana: dashboard TCA & Writer (JSON importable) en `grafana/dashboard_tca.json`
